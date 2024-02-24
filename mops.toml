@@ -1,0 +1,7 @@
+[package]
+name = "MemoryHashKeyList"
+version = "1.0.0"
+description = "Storing blobs into memory per blob-key. (Addition to the access per index)"
+repository = "https://github.com/fGhost713/MemoryHashKeyList"
+keywords = [ "memory", "util", "storing" ]
+license = "MIT"
