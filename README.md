@@ -22,19 +22,10 @@
 
         mops init
 
-(3) This memoryHashList-module is dependant of these other modules: </br>
-memory-region, memory-buffer,test, StableTrieMap
-</br>
-So install these first:
 
-    mops add memory-region
-    mops add memory-buffer
-    mops add test
-    mops add "https://github.com/NatLabs/StableTrieMap#main@4781cb03efd34b124c22396c69710b374366c797"
+(3) Now you need to install the Memory-HashList module:
 
-(4) Now you need to install the MEmory-HashList module:
-
-    mops add https://github.com/fGhost713/Memory-HashList
+    mops add memory-hashlist
 
 </br>
 
