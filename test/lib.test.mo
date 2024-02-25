@@ -4,8 +4,11 @@ import Blob "mo:base/Blob";
 import Text "mo:base/Text";
 import Option "mo:base/Option";
 import Debug "mo:base/Debug";
+import Iter "mo:base/Iter";
+import Nat64 "mo:base/Nat64";
 
 import { test; suite } "mo:test";
+
 
 type OwnType = {
     myNumber : Nat;
@@ -32,6 +35,17 @@ func ownType_getDefaultType() : OwnType {
     let result : OwnType = {
         myNumber = 0;
         myText = "";
+    };
+};
+
+
+func ownType_blobs_array_are_equal_check(items1 : [Blob], items2 : [Blob]) {
+
+   
+   assert (items1.size() == items2.size());
+
+    for (index in Iter.range(0, items1.size() -1)) {
+        ownType_blobs_are_equal_check(items1[index], items2[index]);
     };
 };
 
@@ -106,7 +120,7 @@ suite(
 
                 let mem = lib.MemoryHashList;
 
-                let memoryItem = lib.getNewMemoryStorage();
+                let memoryItem = lib.get_new_memory_storage();
 
                 let key1 : Blob = lib.Blobify.Text.to_blob("key1");
                 let key2 : Blob = lib.Blobify.Text.to_blob("key2");
@@ -135,7 +149,7 @@ suite(
 
                 let mem = lib.MemoryHashList;
 
-                let memoryItem = lib.getNewMemoryStorage();
+                let memoryItem = lib.get_new_memory_storage();
 
                 let key1 : Blob = lib.Blobify.Text.to_blob("key1");
                 let key2 : Blob = lib.Blobify.Text.to_blob("key2");
@@ -161,12 +175,12 @@ suite(
 
         );
            test(
-            "Multi blob: 'get_all' test",
+            "Multi blob: 'get_all' and 'ge_ll_memory_addresses' test",
             func() {
 
                 let mem = lib.MemoryMultiHashList;
 
-                let memoryItem = lib.getNewMemoryStorage();
+                let memoryItem = lib.get_new_memory_storage();
 
                 let key1 : Blob = lib.Blobify.Text.to_blob("key1");
                 let key2 : Blob = lib.Blobify.Text.to_blob("key2");
@@ -186,22 +200,121 @@ suite(
                 ownType_blobs_are_equal_check(ownType2Blob, result2[1]);
                 ownType_blobs_are_equal_check(ownType1Blob, result2[2]);
 
-                let all_adresses = mem.getAllAddresses(key2, memoryItem);
+                let all_adresses = mem.get_all_memory_addresses(key2, memoryItem);
 
                 let lastItem = all_adresses[2];
-                let elementByAddress = mem.get(key2, memoryItem, lastItem);
+                let elementByAddress = mem.get_by_memory_address(key2, memoryItem, lastItem);
 
                 ownType_blobs_are_not_null_and_equal_check(elementByAddress,Option.make(ownType1Blob));
             
             },
            );
+           test(
+            "Multi blob: 'get_all_with_adresses' and 'get_by_memory_address' test",
+            func() {
+
+                let mem = lib.MemoryMultiHashList;
+
+                let memoryItem = lib.get_new_memory_storage();
+
+                let key1 : Blob = lib.Blobify.Text.to_blob("key1");
+                let key2 : Blob = lib.Blobify.Text.to_blob("key2");
+
+         
+
+                let appendResult1 = mem.append(key1, memoryItem, ownType3Blob);
+                let appendResult2 = mem.append(key1, memoryItem, ownType2Blob);
+                let appendResult3 = mem.append(key1, memoryItem, ownType1Blob);
+
+                var result1: [(Blob, Nat64)] = mem.get_all_with_adresses(key1, memoryItem);
+
+                assert (appendResult1.1 == result1[0].1);
+                assert (appendResult2.1 == result1[1].1);
+                assert (appendResult3.1 == result1[2].1);
+
+
+                let blobByAddress1 = mem.get_by_memory_address(key1, memoryItem, result1[0].1);
+                let blobByAddress2 = mem.get_by_memory_address(key1, memoryItem, result1[1].1);
+                let blobByAddress3 = mem.get_by_memory_address(key1, memoryItem, result1[2].1);
+
+                ownType_blobs_are_not_null_and_equal_check(Option.make(ownType3Blob), blobByAddress1);
+                ownType_blobs_are_not_null_and_equal_check(Option.make(ownType2Blob), blobByAddress2);
+                ownType_blobs_are_not_null_and_equal_check(Option.make(ownType1Blob), blobByAddress3);
+
+                ownType_blobs_are_not_null_and_equal_check(Option.make(result1[0].0), blobByAddress1);
+                ownType_blobs_are_not_null_and_equal_check(Option.make(result1[1].0), blobByAddress2);
+                ownType_blobs_are_not_null_and_equal_check(Option.make(result1[2].0), blobByAddress3);
+
+            },
+           );
+              test(
+            "Multi blob: 'get_by_index' test",
+            func() {
+
+                let mem = lib.MemoryMultiHashList;
+
+                let memoryItem = lib.get_new_memory_storage();
+
+                let key1 : Blob = lib.Blobify.Text.to_blob("key1");
+                let key2 : Blob = lib.Blobify.Text.to_blob("key2");
+
+                let appendResult1 = mem.append(key1, memoryItem, ownType3Blob);
+                let appendResult2 = mem.append(key1, memoryItem, ownType2Blob);
+                let appendResult3 = mem.append(key1, memoryItem, ownType1Blob);
+
+            
+                ownType_blobs_are_not_null_and_equal_check(Option.make(ownType3Blob), mem.get_by_index(key1, memoryItem, 0));
+                ownType_blobs_are_not_null_and_equal_check(Option.make(ownType2Blob), mem.get_by_index(key1, memoryItem, 1));
+                ownType_blobs_are_not_null_and_equal_check(Option.make(ownType1Blob), mem.get_by_index(key1, memoryItem, 2));
+
+                assert (mem.get_by_index(key1, memoryItem, 3) == null);
+            },
+           );
+
+            test(
+            "Multi blob: 'get_by_index_and_count' test",
+            func() {
+
+                let mem = lib.MemoryMultiHashList;
+
+                let memoryItem = lib.get_new_memory_storage();
+
+                let key1 : Blob = lib.Blobify.Text.to_blob("key1");
+                let key2 : Blob = lib.Blobify.Text.to_blob("key2");
+
+                ignore mem.append(key1, memoryItem, ownType3Blob);
+                ignore mem.append(key1, memoryItem, ownType2Blob);
+                ignore mem.append(key1, memoryItem, ownType1Blob);
+                ignore mem.append(key1, memoryItem, ownType2Blob);
+                ignore mem.append(key1, memoryItem, ownType1Blob);
+
+
+                var result = mem.get_by_index_and_count(key1, memoryItem, 0,3);
+                ownType_blobs_array_are_equal_check(result, [ownType3Blob, ownType2Blob, ownType1Blob]);
+
+                result := mem.get_by_index_and_count(key1, memoryItem, 0,300);
+                ownType_blobs_array_are_equal_check(result, [ownType3Blob, ownType2Blob, ownType1Blob,ownType2Blob,ownType1Blob]);
+
+                result := mem.get_by_index_and_count(key1, memoryItem, 2,2);
+                ownType_blobs_array_are_equal_check(result, [ownType1Blob,ownType2Blob]);
+
+                result := mem.get_by_index_and_count(key1, memoryItem, 2,3);
+                ownType_blobs_array_are_equal_check(result, [ownType1Blob,ownType2Blob,ownType1Blob]);
+
+
+                result := mem.get_by_index_and_count(key2, memoryItem, 2,3);
+                assert (result == []);
+
+            },
+           );
+
              test(
             "Multi blob: 'delete' test",
             func() {
 
                 let mem = lib.MemoryMultiHashList;
 
-                let memoryItem = lib.getNewMemoryStorage();
+                let memoryItem = lib.get_new_memory_storage();
 
                 let key1 : Blob = lib.Blobify.Text.to_blob("key1");
                 let key2 : Blob = lib.Blobify.Text.to_blob("key2");
@@ -212,7 +325,7 @@ suite(
                 let appendResult5 = mem.append(key1, memoryItem, ownType3Blob);
                 let appendResult6 = mem.append(key1, memoryItem, ownType2Blob);
 
-                let all_adresses = mem.getAllAddresses(key1, memoryItem);
+                let all_adresses = mem.get_all_memory_addresses(key1, memoryItem);
                 let deleteResult1 = mem.delete(key1, memoryItem,all_adresses[1]);
 
                 assert (deleteResult1 == #ok(ownType2Blob));
@@ -231,6 +344,53 @@ suite(
                 ownType_blobs_are_equal_check(allValues[2], ownType3Blob);
                 ownType_blobs_are_equal_check(allValues[3], ownType2Blob);
 
+            },);
+             test(
+            "Multi blob: 'delete_all' test",
+            func() {
+
+                let mem = lib.MemoryMultiHashList;
+
+                let memoryItem = lib.get_new_memory_storage();
+
+                let key1 : Blob = lib.Blobify.Text.to_blob("key1");
+                let key2 : Blob = lib.Blobify.Text.to_blob("key2");
+    
+                let appendResult2 = mem.append(key1, memoryItem, ownType3Blob);
+                let appendResult3 = mem.append(key1, memoryItem, ownType2Blob);
+                let appendResult4 = mem.append(key1, memoryItem, ownType1Blob);
+                let appendResult5 = mem.append(key1, memoryItem, ownType3Blob);
+                let appendResult6 = mem.append(key1, memoryItem, ownType2Blob);
+
+                var result = mem.get_all(key1, memoryItem);
+                assert(result.size() == 5);
+
+                mem.delete_all(key1, memoryItem);
+
+                result := mem.get_all(key1, memoryItem);
+
+                assert(result == []);
+
+            },);
+              test(
+            "Multi blob: 'append' test",
+            func() {
+
+                let mem = lib.MemoryMultiHashList;
+
+                let memoryItem = lib.get_new_memory_storage();
+
+                let key1 : Blob = lib.Blobify.Text.to_blob("key1");
+                let key2 : Blob = lib.Blobify.Text.to_blob("key2");
+    
+                let lastIndex:Nat = 100000;
+                for (index in Iter.range(0, lastIndex)) {
+                    ignore mem.append(key1, memoryItem, ownType1Blob);
+                };
+
+                let all_adresses = mem.get_all_memory_addresses(key1, memoryItem);
+                assert (all_adresses.size() == lastIndex + 1);
+            
             },);
     },
 

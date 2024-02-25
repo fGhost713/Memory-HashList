@@ -16,11 +16,13 @@ import Itertools "mo:itertools/Iter";
 import Principal "mo:base/Principal";
 import Option "mo:base/Option";
 import Result "mo:base/Result";
+import Float "mo:base/Float";
+import Int64 "mo:base/Int64";
 import { MemoryRegion } "mo:memory-region";
 
 module {
 
-    public func getNewMemoryStorage() : MemoryStorage {
+    public func get_new_memory_storage() : MemoryStorage {
         let newItem : MemoryStorage = {
             memory_region = MemoryRegion.new();
             index_mappings = StableTrieMap.new();
@@ -37,6 +39,18 @@ module {
         // There might be more indizies in case of hash-collision (== same Nat32 hashed key) therefore the value as List.
         index_mappings : StableTrieMap.StableTrieMap<Nat32, List.List<Nat64>>;
     };
+
+
+    public func show_memory_used(item : MemoryStorage): (Text){
+          let sizeBytes =  item.memory_region.size;
+          let sizeKiloBytes:Float =  Float.fromInt64(Int64.fromNat64(Nat64.fromNat(sizeBytes))) / 1024;
+          let sizeMegabytes:Float = sizeKiloBytes / 1024;
+          let sizeGigabytes:Float = sizeMegabytes / 1024;
+
+          let returnText = "bytes: " # debug_show(sizeBytes)#" / kb: " # debug_show(sizeKiloBytes) #" / mb: "#debug_show(sizeMegabytes) #" / gb: "#debug_show(sizeGigabytes);
+          return returnText;
+    };
+
 
     //------------------------------------------------------------------------------------------------------
     // Multi-blob usage. The value will be list of values. (You can imagine of something like Dictionary<key, List<blob>> )
@@ -112,7 +126,7 @@ module {
     };
 
     /// Return the blob from the provided address
-    public func multiBlob_GetBlob(key : Blob, item : MemoryStorage, address : Nat64) : ?Blob {
+    public func multiBlob_GetBlob_by_address(key : Blob, item : MemoryStorage, address : Nat64) : ?Blob {
         let wrappedItemOrNull = get_wrappedBlob_internal(key, item, address);
         switch(wrappedItemOrNull){
             case (?wrappedItem){
@@ -122,6 +136,76 @@ module {
                 return null;
             };
         }  
+    };
+
+
+    /// Return the blob from the provided start index and count
+    public func multiBlob_GetBlobs_by_index_and_count(key : Blob, item : MemoryStorage, index : Nat64, count:Nat64) : [Blob] {
+        
+        if (count == 0){
+            return [];
+        };
+
+        let getKeyInfoResult : (?KeyInfo, Nat64) = get_KeyInfo(key, item);
+        let keyInfoOrNull = getKeyInfoResult.0;
+        let keyInfoAddress = getKeyInfoResult.1;
+
+        let lastIndex = index + count - 1;
+        switch (keyInfoOrNull) {
+            case (?keyInfo) {
+
+                let firstUsedIndex = keyInfo.firstUsedIndex;
+                var resultList : List.List<Blob> = List.nil<Blob>();
+                var currentIndex:Nat64 = 0;
+
+                if (currentIndex >= index and currentIndex <=lastIndex ){
+
+                    let wrappedBlob = get_wrappedBlob_directly_internal(item,firstUsedIndex);
+                    resultList := List.push<Blob>(wrappedBlob.valueAsBlob, resultList);     
+                };
+                
+
+                var nextItemAddress = firstUsedIndex;
+
+                var listRetrievalCompleted : Bool = false;
+                while (listRetrievalCompleted == false) {
+                    
+                    currentIndex:=currentIndex + 1;
+
+                    let currentItemAdress = nextItemAddress;
+                    nextItemAddress := wrappedBlobStore_getNextAddress(item, nextItemAddress);
+
+                    if (nextItemAddress == currentItemAdress) {
+                        listRetrievalCompleted := true;
+                    } else {
+                        if (currentIndex >= index and currentIndex <=lastIndex ){
+
+                            let wrappedBlob = get_wrappedBlob_directly_internal(item,nextItemAddress);
+                            resultList := List.push<Blob>(wrappedBlob.valueAsBlob, resultList);    
+                        };
+                    };
+                };
+
+                return List.toArray(List.reverse(resultList));
+            };
+            case (_) {
+                //The key was not used before
+                return [];
+            };
+        };
+        
+    };
+
+    /// Return the blob from the provided index
+    public func multiBlob_GetBlob_by_index(key : Blob, item : MemoryStorage, index : Nat64) : ?Blob {
+        
+        
+        let resultArray = multiBlob_GetBlobs_by_index_and_count(key, item, index, 1);
+        if (resultArray.size() == 0){
+            return null;
+        };
+
+        return Option.make(resultArray[0]);
     };
 
     /// All the stored Blobs for the provided 'key' are returned.
@@ -162,6 +246,7 @@ module {
         return List.toArray(List.reverse(resultList));
     };
 
+    // Delete an entry by key and address
     public func multiBlob_delete(key : Blob, item : MemoryStorage, address : Nat64):Result.Result<Blob,Text> {
 
         let keyInfoResult : (?KeyInfo, Nat64) = get_KeyInfo(key, item);
