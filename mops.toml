@@ -2,7 +2,7 @@
 name = "Memory-HashList"
 version = "1.0.0"
 description = "Storing and accessing blobs into memory associated with blob-key. (Addition to the access per index)"
-repository = "https://github.com/fGhost713/MemoryHashKeyList"
+repository = "https://github.com/fGhost713/Memory-HashList"
 keywords = [ "memory", "data structures", "storing" ]
 license = "MIT"
 

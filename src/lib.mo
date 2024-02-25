@@ -3,7 +3,7 @@ import MemoryMultiHashListType "memoryMultiHashList";
 import CommonMemoryHashKeyList "/Helpers/commonMemoryHashKeyList";
 import BlobifyModule "mo:memory-buffer/Blobify";
 
-module {
+module MemoryHashListLib {
 
     public func get_new_memory_storage() : CommonMemoryHashKeyList.MemoryStorage {
         CommonMemoryHashKeyList.get_new_memory_storage();
