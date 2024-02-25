@@ -132,7 +132,7 @@ module {
         };
 
         var resultList : List.List<Blob> = List.nil<Blob>();
-        for (index in Iter.range(0, blobsArray -1)) {
+        for (index in Iter.range(0, arraySize -1)) {
 
             let item : (Blob, Nat64 /*address*/) = blobsArray[index];
             resultList := List.push<Blob>(item.0, resultList);

@@ -1,7 +1,15 @@
 import MemoryHashListType "memoryHashList";
 import MemoryMultiHashListType "memoryMultiHashList";
+import CommonMemoryHashKeyList "/Helpers/commonMemoryHashKeyList";
+import Mem  "mo:memory-region";
 
-module{
-  public type MemoryHashList = MemoryHashListType;
-  public type MemoryMultiHashList = MemoryMultiHashListType;
+module {
+
+    public func getNewMemoryStorage() : CommonMemoryHashKeyList.MemoryStorage {
+        CommonMemoryHashKeyList.getNewMemoryStorage();
+    };
+
+    public let MemoryHashList = MemoryHashListType;
+    public let MemoryMultiHashList = MemoryMultiHashListType;
+    public let MemoryRegion = Mem;
 };

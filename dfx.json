@@ -1,9 +1,15 @@
 {
+
   "canisters": {
     "MemoryHashKeyList_backend": {
       "main": "src/MemoryHashKeyList_backend/main.mo",
       "type": "motoko"
-    }
+    },
+    "test": {
+      "type": "motoko",
+      "main": "test/lib.test.mo",
+      "args": "-v --compacting-gc"
+    }   
   },
   "defaults": {
     "build": {

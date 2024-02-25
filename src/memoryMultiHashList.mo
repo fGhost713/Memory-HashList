@@ -1,37 +1,36 @@
 import CommonMemoryHashKeyList "Helpers/commonMemoryHashKeyList";
 
-module {
+module MemoryMultiHashList{
 
     public func getNewMemoryStorage() : CommonMemoryHashKeyList.MemoryStorage {
         CommonMemoryHashKeyList.getNewMemoryStorage();
     };
 
-    public func append(key : Blob, item : MemoryStorage, blobToStore : Blob) {
+    public func append(key : Blob, item : CommonMemoryHashKeyList.MemoryStorage, blobToStore : Blob): (Nat64 /* keyInfo address*/, Nat64 /*stored blob address*/)  {
         CommonMemoryHashKeyList.multiBlob_append(key, item, blobToStore);
     };
 
-    public func multiBlob_GetAllAddresses(key : Blob, item : MemoryStorage) : [Nat64] {
+    public func getAllAddresses(key : Blob, item : CommonMemoryHashKeyList.MemoryStorage) : [Nat64] {
         CommonMemoryHashKeyList.multiBlob_GetAllAddresses(key,item);
     };
 
-    public func multiBlob_GetBlob(item : MemoryStorage, address : Nat64) : Blob {
+    public func get(item : CommonMemoryHashKeyList.MemoryStorage, address : Nat64) : Blob {
         CommonMemoryHashKeyList.multiBlob_GetBlob(item, address);
-
     };
 
-    public func multiBlob_GetAllBlobs(key : Blob, item : MemoryStorage) : [Blob] {
+    public func get_all(key : Blob, item : CommonMemoryHashKeyList.MemoryStorage) : [Blob] {
         CommonMemoryHashKeyList.multiBlob_GetAllBlobs(key, item);
     };
 
-    public func multiBlob_GetAllBlobsWithAdresses(key : Blob, item : MemoryStorage) : [(Blob, Nat64 /*address*/)] {
+    public func get_all_WithAdresses(key : Blob, item : CommonMemoryHashKeyList.MemoryStorage) : [(Blob, Nat64 /*address*/)] {
         CommonMemoryHashKeyList.multiBlob_GetAllBlobsWithAdresses(key, item);
     };
 
-    public func multiBlob_delete(key : Blob, item : MemoryStorage, address : Nat64) {
+    public func delete(key : Blob, item : CommonMemoryHashKeyList.MemoryStorage, address : Nat64) {
         CommonMemoryHashKeyList.multiBlob_delete(key, item, address);
     };
 
-    public func multiBlob_delete_all(key : Blob, item : MemoryStorage) {
+    public func delete_all(key : Blob, item : CommonMemoryHashKeyList.MemoryStorage) {
         CommonMemoryHashKeyList.multiBlob_delete_all(key, item);
     };
 
