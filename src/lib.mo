@@ -5,8 +5,8 @@ import BlobifyModule "mo:memory-buffer/Blobify";
 
 module {
 
-    public func getNewMemoryStorage() : CommonMemoryHashKeyList.MemoryStorage {
-        CommonMemoryHashKeyList.getNewMemoryStorage();
+    public func get_new_memory_storage() : CommonMemoryHashKeyList.MemoryStorage {
+        CommonMemoryHashKeyList.get_new_memory_storage();
     };
 
     public let MemoryHashList = MemoryHashListType;
