@@ -1,7 +1,7 @@
 import MemoryHashListType "memoryHashList";
 import MemoryMultiHashListType "memoryMultiHashList";
 import CommonMemoryHashKeyList "/Helpers/commonMemoryHashKeyList";
-import Mem  "mo:memory-region";
+import BlobifyModule "mo:memory-buffer/Blobify";
 
 module {
 
@@ -11,5 +11,6 @@ module {
 
     public let MemoryHashList = MemoryHashListType;
     public let MemoryMultiHashList = MemoryMultiHashListType;
-    public let MemoryRegion = Mem;
+    public let Blobify = BlobifyModule;
+  
 };

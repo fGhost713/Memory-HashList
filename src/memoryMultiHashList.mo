@@ -1,4 +1,5 @@
 import CommonMemoryHashKeyList "Helpers/commonMemoryHashKeyList";
+import Result "mo:base/Result";
 
 module MemoryMultiHashList{
 
@@ -14,8 +15,8 @@ module MemoryMultiHashList{
         CommonMemoryHashKeyList.multiBlob_GetAllAddresses(key,item);
     };
 
-    public func get(item : CommonMemoryHashKeyList.MemoryStorage, address : Nat64) : Blob {
-        CommonMemoryHashKeyList.multiBlob_GetBlob(item, address);
+    public func get(key : Blob, item : CommonMemoryHashKeyList.MemoryStorage, address : Nat64) : ?Blob {
+        CommonMemoryHashKeyList.multiBlob_GetBlob(key, item, address);
     };
 
     public func get_all(key : Blob, item : CommonMemoryHashKeyList.MemoryStorage) : [Blob] {
@@ -26,7 +27,7 @@ module MemoryMultiHashList{
         CommonMemoryHashKeyList.multiBlob_GetAllBlobsWithAdresses(key, item);
     };
 
-    public func delete(key : Blob, item : CommonMemoryHashKeyList.MemoryStorage, address : Nat64) {
+    public func delete(key : Blob, item : CommonMemoryHashKeyList.MemoryStorage, address : Nat64):Result.Result<Blob,Text> {
         CommonMemoryHashKeyList.multiBlob_delete(key, item, address);
     };
 

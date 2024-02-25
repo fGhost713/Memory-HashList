@@ -15,15 +15,10 @@ import Binary "binary";
 import Itertools "mo:itertools/Iter";
 import Principal "mo:base/Principal";
 import Option "mo:base/Option";
+import Result "mo:base/Result";
 import { MemoryRegion } "mo:memory-region";
 
 module {
-
-    //Just mockup method for the current test
-    public func add(a : Nat, b : Nat) : Nat {
-
-        return a +b;
-    };
 
     public func getNewMemoryStorage() : MemoryStorage {
         let newItem : MemoryStorage = {
@@ -107,7 +102,7 @@ module {
                     };
                 };
 
-                return List.toArray(resultList);
+                return List.toArray(List.reverse(resultList));
             };
             case (_) {
                 //The key was not used before
@@ -117,9 +112,16 @@ module {
     };
 
     /// Return the blob from the provided address
-    public func multiBlob_GetBlob(item : MemoryStorage, address : Nat64) : Blob {
-        let wrappedItem = get_wrappedBlob_internal(item, address);
-        return wrappedItem.valueAsBlob;
+    public func multiBlob_GetBlob(key : Blob, item : MemoryStorage, address : Nat64) : ?Blob {
+        let wrappedItemOrNull = get_wrappedBlob_internal(key, item, address);
+        switch(wrappedItemOrNull){
+            case (?wrappedItem){
+                return Option.make(wrappedItem.valueAsBlob);
+            };
+            case (_){
+                return null;
+            };
+        }  
     };
 
     /// All the stored Blobs for the provided 'key' are returned.
@@ -138,7 +140,7 @@ module {
             resultList := List.push<Blob>(item.0, resultList);
 
         };
-        return List.toArray(resultList);
+        return List.toArray(List.reverse(resultList));
     };
 
     /// All the stored Blobs with corresponding memory-addresses for the provided 'key' are returned.
@@ -153,16 +155,31 @@ module {
         var resultList : List.List<(Blob, Nat64)> = List.nil<(Blob, Nat64)>();
         for (arrayIndex in Iter.range(0, arraySize -1)) {
             let address = allAddresses[arrayIndex];
-            let wrappedItem = get_wrappedBlob_internal(item, address);
+            let wrappedItem = get_wrappedBlob_directly_internal(item, address);
             resultList := List.push<(Blob, Nat64)>((wrappedItem.valueAsBlob, address), resultList);
 
         };
-        return List.toArray(resultList);
+        return List.toArray(List.reverse(resultList));
     };
 
-    public func multiBlob_delete(key : Blob, item : MemoryStorage, address : Nat64) {
+    public func multiBlob_delete(key : Blob, item : MemoryStorage, address : Nat64):Result.Result<Blob,Text> {
 
         let keyInfoResult : (?KeyInfo, Nat64) = get_KeyInfo(key, item);
+        var keyInfo:KeyInfo = get_default_keyInfo();
+        switch(keyInfoResult.0){
+            case (?foundKeyInfo){
+                keyInfo:=foundKeyInfo;
+            };
+            case (_){
+                return #err("The key not exist");
+            };
+        };
+
+        let itemExistAtAddress = wrappedBlob_exist(key,item, address);
+        if (itemExistAtAddress == false){
+            return #err("No item exist at this address for the provided key");
+        };
+
         let keyInfoAddress : Nat64 = keyInfoResult.1;
 
         let blobSize = wrappedBlobStore_getTotalSize(item, address);
@@ -180,10 +197,13 @@ module {
                 // If we are here: next item exist => Means deleted item was not the last item
                 set_nextIndex_in_wrappedBlobStoreItem(item, prevAddress, nextAddress);
                 set_previousIndex_in_wrappedBlobStoreItem(item, nextAddress, prevAddress);
+
+                return #ok(deletedItem.valueAsBlob);
             } else {
                 // If we are here: next item not exist => Means deleted item was the last item
                 set_nextIndex_in_wrappedBlobStoreItem(item, prevAddress, prevAddress);
                 keyInfo_update_lastused_index(keyInfoAddress, item, prevAddress);
+                return #ok(deletedItem.valueAsBlob);
             };
         } else {
             // If we are here: previous item not exist => means the deleted item is the first item
@@ -192,9 +212,11 @@ module {
                 // If we are here: next item exist => Means the deleted item was not the last item
                 set_previousIndex_in_wrappedBlobStoreItem(item, nextAddress, nextAddress);
                 keyInfo_update_firstused_index(keyInfoAddress, item, nextAddress);
+                return #ok(deletedItem.valueAsBlob);
             } else {
                 // If we are here: next item not exist => Means the deleted item was the final existing item.
                 keyInfo_delete(key, keyInfoAddress, item);
+                return #ok(deletedItem.valueAsBlob);
             };
         };
     };
@@ -335,11 +357,52 @@ module {
         return (keyInfoAddressNat64, valueStoredAddressNat64);
     };
 
-    private func get_wrappedBlob_internal(item : MemoryStorage, address : Nat64) : WrappedBlobStoreItem {
 
+
+    // Returns the wrapped blob by address - without checking before if the item exist.
+    // So we must be sure that the item on that address exist.
+    private func get_wrappedBlob_directly_internal(item : MemoryStorage, address : Nat64) : WrappedBlobStoreItem {
         let sizeNeeded = Region.loadNat64(item.memory_region.region, address);
         let blobResult : Blob = MemoryRegion.loadBlob(item.memory_region, Nat64.toNat(address), Nat64.toNat(sizeNeeded));
         return blob_to_WrappedBlobStoreItem(blobResult);
+    };
+
+
+    private func wrappedBlob_exist(key : Blob, item : MemoryStorage, address : Nat64):Bool{
+        let itemOrNull = get_wrappedBlob_internal(key,item, address);
+        switch(itemOrNull){
+            case (?item){
+                return true;
+            };
+            case (_){
+                return false;
+            }
+        };
+    };
+
+    // Returns the wrapped blob by provided key and memory address.
+    // Null is returned in case item not found.
+    private func get_wrappedBlob_internal(key : Blob, item : MemoryStorage, address : Nat64) : ?WrappedBlobStoreItem {
+
+        //First check if the address exist:
+        let availableAddresses = multiBlob_GetAllAddresses(key, item);
+        if (availableAddresses.size() == 0){
+            return null;
+        };
+
+        let foundAddressOrNull:?Nat64 = Array.find<Nat64>(availableAddresses, func (n):Bool { n == address});
+        switch(foundAddressOrNull){
+            case (?foundAddress){
+                // everything is fine, the address is used by the provided key
+            };
+            case (_){
+                return null;
+            };
+        };
+
+        let sizeNeeded = Region.loadNat64(item.memory_region.region, address);
+        let blobResult : Blob = MemoryRegion.loadBlob(item.memory_region, Nat64.toNat(address), Nat64.toNat(sizeNeeded));
+        return Option.make(blob_to_WrappedBlobStoreItem(blobResult));
     };
 
     /// Converts the WrappedBlobStore-type to blob
@@ -507,6 +570,18 @@ module {
 
     };
 
+    private func get_default_keyInfo():KeyInfo{
+
+        let result:KeyInfo = {
+            totalSize : Nat64 = 0;
+            sizeOfKeyBlob : Nat64=0;
+            firstUsedIndex : Nat64=0;
+            lastUsedIndex : Nat64=0;
+            keyAsBlob : Blob = Blob.fromArray(Binary.LittleEndian.fromNat64(0));
+        };
+        return result;
+    };
+
     //----------------------------------------------------------------------------------------------------------
 
     private func index_mapping_remove_value(key : Blob, item : MemoryStorage, valueToRemove : Nat64) {
@@ -529,6 +604,7 @@ module {
     };
 
     private func nat32Identity(n : Nat32) : Nat32 { return n };
+
 
     /// Wrapper type  that holds the actual blob and some meta-data
     private type WrappedBlobStoreItem = {
