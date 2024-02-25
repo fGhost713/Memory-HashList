@@ -164,7 +164,7 @@ import { test; suite } "mo:test";
 
             );
             test(
-                "Multi blob: 'get_all' and 'ge_ll_memory_addresses' test",
+                "Multi blob: 'get_all' and 'get_all_memory_addresses' test",
                 func() {
 
                     let mem = lib.MemoryMultiHashList;
