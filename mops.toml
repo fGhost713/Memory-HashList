@@ -1,7 +1,12 @@
 [package]
-name = "MemoryHashKeyList"
+name = "Memory-HashList"
 version = "1.0.0"
-description = "Storing blobs into memory per blob-key. (Addition to the access per index)"
+description = "Storing and accessing blobs into memory associated with blob-key. (Addition to the access per index)"
 repository = "https://github.com/fGhost713/MemoryHashKeyList"
-keywords = [ "memory", "util", "storing" ]
+keywords = [ "memory", "data structures", "storing" ]
 license = "MIT"
+
+[dependencies]
+memory-region = "0.2.0"
+StableTrieMap = "https://github.com/NatLabs/StableTrieMap#main@4781cb03efd34b124c22396c69710b374366c797"
+itertools = "0.2.1"

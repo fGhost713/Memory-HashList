@@ -1,8 +1,7 @@
+import MemoryHashListType "memoryHashList";
+import MemoryMultiHashListType "memoryMultiHashList";
+
 module{
-
-public func add(a:Nat, b:Nat): Nat{
-
-    return a+b;
-};
-
+  public type MemoryHashList = MemoryHashListType;
+  public type MemoryMultiHashList = MemoryMultiHashListType;
 };

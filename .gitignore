@@ -25,3 +25,6 @@ dist/
 .env
 
 .mops
+
+info.txt
+src\info.txt
