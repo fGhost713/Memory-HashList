@@ -1,6 +1,6 @@
 import MemoryHashListType "memoryHashList";
 import MemoryMultiHashListType "memoryMultiHashList";
-import CommonMemoryHashKeyList "/Helpers/commonMemoryHashKeyList";
+import CommonMemoryHashKeyList "/helpers/commonMemoryHashKeyList";
 import BlobifyModule "mo:memory-buffer/Blobify";
 
 module MemoryHashListLib {

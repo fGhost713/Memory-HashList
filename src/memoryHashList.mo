@@ -1,4 +1,4 @@
-import CommonMemoryHashKeyList "Helpers/commonMemoryHashKeyList";
+import CommonMemoryHashKeyList "helpers/commonMemoryHashKeyList";
 import Option "mo:base/Option";
 
 module MemoryHashList{

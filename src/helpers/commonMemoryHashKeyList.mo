@@ -19,9 +19,14 @@ import Result "mo:base/Result";
 import Float "mo:base/Float";
 import Int64 "mo:base/Int64";
 import { MemoryRegion } "mo:memory-region";
+import memoryHashListTypes "../types/memoryHashListTypes";
 
 module {
 
+    public type MemoryStorage = memoryHashListTypes.MemoryStorage;
+    public type KeyInfo = memoryHashListTypes.KeyInfo;
+    public type WrappedBlobStoreItem = memoryHashListTypes.WrappedBlobStoreItem;
+    
     public func get_new_memory_storage() : MemoryStorage {
         let newItem : MemoryStorage = {
             memory_region = MemoryRegion.new();
@@ -30,15 +35,7 @@ module {
         return newItem;
     };
 
-    public type MemoryStorage = {
 
-        //The used memory region
-        memory_region : MemoryRegion.MemoryRegion;
-
-        // The start-indizes for key (as Nat32)
-        // There might be more indizies in case of hash-collision (== same Nat32 hashed key) therefore the value as List.
-        index_mappings : StableTrieMap.StableTrieMap<Nat32, List.List<Nat64>>;
-    };
 
 
     public func show_memory_used(item : MemoryStorage): (Text){
@@ -271,8 +268,8 @@ module {
         let deletedBlob : Blob = MemoryRegion.removeBlob(item.memory_region, Nat64.toNat(address), Nat64.toNat(blobSize));
         let deletedItem : WrappedBlobStoreItem = blob_to_WrappedBlobStoreItem(deletedBlob);
 
-        let prevAddress = deletedItem.previousIndex;
-        let nextAddress = deletedItem.nextIndex;
+        let prevAddress = deletedItem.previousAddress;
+        let nextAddress = deletedItem.nextAddress;
 
         if (prevAddress != address) {
 
@@ -393,8 +390,8 @@ module {
         let blobSize = Nat64.fromNat(blobToStore.size());
         let storeItem : WrappedBlobStoreItem = {
             totalSize : Nat64 = blobSize + 32; // 32 bytes => 4 * Nat64 = 4 * 8 bytes = 32 bytes
-            nextIndex : Nat64 = 0;
-            previousIndex : Nat64 = 0;
+            nextAddress : Nat64 = 0;
+            previousAddress : Nat64 = 0;
             valueAsBlobSize : Nat64 = blobSize;
             valueAsBlob : Blob = blobToStore;
         };
@@ -497,13 +494,13 @@ module {
         let totalBytes : Nat64 = blobSizeBytes + 32; // 32 bytes => 4 * Nat64 = 4 * 8 bytes = 32 bytes
 
         let blob_totalSize : [Nat8] = Binary.LittleEndian.fromNat64(totalBytes);
-        let blob_nextIndex : [Nat8] = Binary.LittleEndian.fromNat64(item.nextIndex);
-        let blob_previousIndex : [Nat8] = Binary.LittleEndian.fromNat64(item.previousIndex);
+        let blob_nextAddress : [Nat8] = Binary.LittleEndian.fromNat64(item.nextAddress);
+        let blob_previousAddress : [Nat8] = Binary.LittleEndian.fromNat64(item.previousAddress);
         let blob_valueAsBlobSize : [Nat8] = Binary.LittleEndian.fromNat64(item.valueAsBlobSize);
 
         var iter = Iter.fromArray(blob_totalSize);
-        iter := Itertools.chain(iter, Iter.fromArray(blob_nextIndex));
-        iter := Itertools.chain(iter, Iter.fromArray(blob_previousIndex));
+        iter := Itertools.chain(iter, Iter.fromArray(blob_nextAddress));
+        iter := Itertools.chain(iter, Iter.fromArray(blob_previousAddress));
         iter := Itertools.chain(iter, Iter.fromArray(blob_valueAsBlobSize));
         iter := Itertools.chain(iter, Iter.fromArray(Blob.toArray(item.valueAsBlob)));
 
@@ -516,17 +513,17 @@ module {
         let blobArray = Blob.toArray(item);
 
         let totalBytes : Nat64 = Binary.LittleEndian.toNat64(Iter.toArray(Itertools.fromArraySlice(blobArray, 0, 8)));
-        let nextIndex : Nat64 = Binary.LittleEndian.toNat64(Iter.toArray(Itertools.fromArraySlice(blobArray, 8, 16)));
-        let previousIndex : Nat64 = Binary.LittleEndian.toNat64(Iter.toArray(Itertools.fromArraySlice(blobArray, 16, 24)));
+        let nextAddress : Nat64 = Binary.LittleEndian.toNat64(Iter.toArray(Itertools.fromArraySlice(blobArray, 8, 16)));
+        let previousAddress : Nat64 = Binary.LittleEndian.toNat64(Iter.toArray(Itertools.fromArraySlice(blobArray, 16, 24)));
         let valueAsBlobSize : Nat64 = Binary.LittleEndian.toNat64(Iter.toArray(Itertools.fromArraySlice(blobArray, 24, 32)));
         let valueAsBlob : Blob = Blob.fromArray(Iter.toArray(Itertools.fromArraySlice(blobArray, 32, 32 + Nat64.toNat(valueAsBlobSize))));
 
         let result : WrappedBlobStoreItem = {
             totalSize = totalBytes;
 
-            nextIndex : Nat64 = nextIndex;
+            nextAddress : Nat64 = nextAddress;
 
-            previousIndex : Nat64 = previousIndex;
+            previousAddress : Nat64 = previousAddress;
 
             //Size of the value-blob
             valueAsBlobSize : Nat64 = valueAsBlobSize;
@@ -691,44 +688,8 @@ module {
     private func nat32Identity(n : Nat32) : Nat32 { return n };
 
 
-    /// Wrapper type  that holds the actual blob and some meta-data
-    private type WrappedBlobStoreItem = {
 
-        //The size of this instance.
-        totalSize : Nat64;
 
-        //Index for next item
-        nextIndex : Nat64;
 
-        //Index for the previous item
-        previousIndex : Nat64;
-
-        //Size of the value-blob
-        valueAsBlobSize : Nat64;
-
-        //The blob-content to store
-        valueAsBlob : Blob;
-    };
-
-    /// The complete key as blob is stored here (So we can compare it, in case of hash-collision),
-    /// and also the first-and last used index for the memory-adresses, where the actual blob is stored.
-    private type KeyInfo = {
-
-        // The totalsize in bytes used for this type
-        totalSize : Nat64;
-
-        // The size of the blob 'keyAsBlob' in bytes
-        sizeOfKeyBlob : Nat64;
-
-        // The first used Item-Index (=address for the actual stored blob-value)
-        firstUsedIndex : Nat64;
-
-        // Store the last used item-index here, so that append new values will be fast, because we have index of last item
-        lastUsedIndex : Nat64;
-
-        // The used key as blob
-        keyAsBlob : Blob;
-
-    };
 
 };
