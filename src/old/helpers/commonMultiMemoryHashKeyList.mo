@@ -11,7 +11,7 @@ import Nat "mo:base/Nat";
 import List "mo:base/List";
 import Hash "mo:base/Hash";
 import Nat8 "mo:base/Nat8";
-import Binary "binary";
+import Binary "../../helpers/binary";
 import Itertools "mo:itertools/Iter";
 import Principal "mo:base/Principal";
 import Option "mo:base/Option";
