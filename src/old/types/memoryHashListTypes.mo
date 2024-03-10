@@ -63,7 +63,7 @@ module{
         //The blob-content to store
         valueAsBlob : Blob;
 
-        // 8 bytes reserved. If the internal blob should be replaced
+        // Bytes reserved. If the internal blob should be replaced
         // and the size of new blob is not bigger than initialblob-size + 8 bytes 
         // then the internal blob can be replaced. If not then we need to create new 
         // 'WrappedBlobStoreItem' and store the new blob there.

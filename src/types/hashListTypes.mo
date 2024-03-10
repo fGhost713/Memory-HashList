@@ -30,10 +30,10 @@ module {
     public type KeyInfo = {
 
         // The totalsize in bytes used for this type
-        totalSize : Nat32;
+        totalSize : Nat64;
 
         // The size of the blob 'keyAsBlob' in bytes
-        sizeOfKeyBlob : Nat32;
+        sizeOfKeyBlob : Nat64;
 
         valueItemsCount:Nat64;
 
@@ -52,11 +52,21 @@ module {
 
     };
 
+
+    public type StepIndexBucket = {
+
+        bucketTotalSize:Nat64;
+        bucketIdentifier:Nat64; //all buckets will have same identifier,so wie know memory place not empty, but real bucket available
+        bucketItemsCount:Nat64;
+    };
+
     /// Wrapper type as (linked list node) that holds the actual value-blob and some meta-data
     public type WrappedBlob = {
 
         //The size of this instance in bytes.
-        totalSize : Nat32;
+        totalSize : Nat64;
+
+        wrappedBlobIdentifier:Nat64;
 
         //Index for next item
         addressOfNextItem : Nat64;
@@ -65,7 +75,7 @@ module {
         addressOfPreviousItem : Nat64;
 
         //Size of the value-blob in bytes
-        internalBlobSize : Nat32;
+        internalBlobSize : Nat64;
 
         //The blob-content to store
         internalBlob : Blob;

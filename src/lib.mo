@@ -1,4 +1,4 @@
-import HashTableTypes "types/hashTableTypes";
+import HashListTypes "types/hashListTypes";
 import LibKeyInfo "modules/libKeyInfo";
 import LibWrappedBlob "modules/libWrappedBlob";
 import Option "mo:base/Option";
