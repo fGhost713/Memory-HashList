@@ -1,5 +1,5 @@
 import Blob "mo:base/Blob";
-import HashTableTypes "../types/hashListTypes";
+import HashListTypes "../types/hashListTypes";
 import StableTrieMap "mo:StableTrieMap";
 import Nat32 "mo:base/Nat32";
 import Nat64 "mo:base/Nat64";
@@ -13,268 +13,336 @@ import Option "mo:base/Option";
 import Result "mo:base/Result";
 import Debug "mo:base/Debug";
 import Array "mo:base/Array";
+import Bool "mo:base/Bool";
 import libKeyInfo "libKeyInfo";
 import { MemoryRegion } "mo:memory-region";
-import libIndexMapping "libIndexMapping";
+import BlobifyModule "mo:memory-buffer/Blobify";
+import CommonTypes "../types/commonTypes";
+import WrappedBlobTypes "../types/wrappedBlob/wrappedBlobTypes";
+import MemoryStorageTypes "../types/memoryStorage/memoryStorageTypes";
+
+//import libIndexMapping "libIndexMapping";
 
 module {
 
-    private type WrappedBlob = HashTableTypes.WrappedBlob;
-    private type MemoryStorage = HashTableTypes.MemoryStorage;
-    private type KeyInfo = HashTableTypes.KeyInfo;
-    private func nat32Identity(n : Nat32) : Nat32 { return n };
+    public class libWrappedBlob(memoryStorageToUse : MemoryStorageTypes.MemoryStorage) {
 
- 
-    // // Returns the wrapped-blob by address - without checking before if item exist.
-    // // So we must be sure that the item on that address exist.
-    // public func get_wrappedBlob_from_memory(memoryStorage : MemoryStorage, address : Nat64) : WrappedBlob {
-    //     let totalSize = Region.loadNat64(memoryStorage.memory_region.region, address);
-    //     let blobResult : Blob = MemoryRegion.loadBlob(memoryStorage.memory_region, Nat64.toNat(address), Nat64.toNat(totalSize));
-    //     return convert_wrappedblob_as_blob_to_wrappedBlob(blobResult);
-    // };
+        private let memoryStorage : MemoryStorageTypes.MemoryStorage = memoryStorageToUse;
+        private let identifierWrappedBlob = CommonTypes.identifier_WrappedBlob;
+        private let offsets = CommonTypes.Offsets_WrappedBlob;
 
-    // // Get the internal blob from WrappedBlob-Address
-    // public func get_internal_blob_from_memory(memoryStorage : MemoryStorage, address : Nat64):Blob{
-        
-    //     let internalBlobSize = Nat64.toNat(Region.loadNat64(memoryStorage.memory_region.region, address + 8));
-    //     let internalBlobAddress = address + 16;
-    //     return Region.loadBlob(memoryStorage.memory_region.region, internalBlobAddress, internalBlobSize);
-    // };
+        public func get_needed_new_wrapped_blob_size_in_bytes(blobToStore : Blob):Nat64{
+           offsets.minimumBytesNeeded + Nat64.fromNat(blobToStore.size()) + memoryStorage.replaceBufferSize;           
+        };
 
-    // // Add or update value by key
-    // public func add_or_update(key : Blob, memoryStorage : MemoryStorage, blobToStoreOrUpdate : Blob) : Nat64 {
+        public func get_wrapped_blob_size_from_address(memoryAddress:Nat64):Nat64{
+            Region.loadNat64(memoryStorage.memory_region.region,memoryAddress + offsets.internalBlobSize);
+        };
 
-    //     var hashedKey = Blob.hash(key);
-    //     let getKeyInfoResult : (?KeyInfo, Nat64) = libKeyInfo.get_keyinfo(key, memoryStorage);
-    //     let keyInfoOrNull = getKeyInfoResult.0;
-    //     let keyInfoAddress : Nat64 = getKeyInfoResult.1;
+        // public func exist_wrapped_blob_on_address(memoryAddress:Nat64):Bool{
+        //     let identifier =  Region.loadNat64(memoryStorage.memory_region.region,memoryAddress + offsets.identifier);
+        //     return identifier == identifierWrappedBlob;
+        // };
 
-    //     switch (keyInfoOrNull) {
-    //         case (?keyInfo) {
-    //             //key with value is already existing:
+        public func update_previous_blob_address_value(memoryAddress:Nat64, newPreviousAddress:Nat64){
+             // Address of previous item
+            Region.storeNat64(memoryStorage.memory_region.region,memoryAddress + offsets.addressOfPreviousItem, newPreviousAddress);
+        };
 
-    //             let alreadyStoredWrappedBlobAddress : Nat64 = keyInfo.wrappedBlobAddress;
-    //             let totalSizeFromAlreadyStoredBlob : Nat64 = get_wrapped_blob_totalsize(memoryStorage, alreadyStoredWrappedBlobAddress);
-    //             let blobToStoreOrUpdateSize : Nat = blobToStoreOrUpdate.size();
-    //             var updatePossible : Bool = false;
+        public func update_next_blob_address_value(memoryAddress:Nat64, newNextAddress:Nat64){
+             // Address of previous item
+            Region.storeNat64(memoryStorage.memory_region.region,memoryAddress + offsets.addressOfNextItem, newNextAddress);
+        };
 
+        // Create and store new wrappedBlob entry in memory.
+        // -> The wrapped-Blob is written directly into memory.
+        //    This means the actual blob for the type 'wrappedBlob' 
+        //    (defined in types/wrappedBlob/wrappedBlobTypes.mo') is not created.
+            
+        public func create_new(blobToStore : Blob,
+        previousWrappedBlobAddress:?Nat64, nextWrappedBlobAddress:?Nat64 ) : Nat64 /* stored wrappedBlob address*/ {
 
-    //             if (totalSizeFromAlreadyStoredBlob > 16) {
+            let bytesNeeded:Nat64 = get_needed_new_wrapped_blob_size_in_bytes(blobToStore);
+            
+            // allocate memory and get the memory address
+            let memoryAddress = Nat64.fromNat(MemoryRegion.allocate(memoryStorage.memory_region,Nat64.toNat(bytesNeeded)));
 
-    //                 let freeSizeAvailable : Nat = Nat64.toNat(totalSizeFromAlreadyStoredBlob - 16);                           
-    //                 if (blobToStoreOrUpdateSize <= freeSizeAvailable) {
-    //                     updatePossible := true;
-    //                 };
-    //             };
+            let addressOfPreviousWrappedBlob:Nat64 = Option.get(previousWrappedBlobAddress, Nat64.fromNat(0));
+            let addressOfNextWrappedBlob:Nat64 = Option.get(nextWrappedBlobAddress, Nat64.fromNat(0));
+           
+            // Store the wrappedBlob info direct into memory. 
+            // (This is faster than create and save instance of 'wrappedBlob'-type into memory)
 
-    //             if (updatePossible == false) {
+            // total-size
+            Region.storeNat64(memoryStorage.memory_region.region,memoryAddress + offsets.totalSize, bytesNeeded);
+            
+            // identifier:
+            Region.storeNat64(memoryStorage.memory_region.region,memoryAddress + offsets.identifier, identifierWrappedBlob);
 
-    //                 //Delete the old item:
-    //                 ignore MemoryRegion.removeBlob(
-    //                     memoryStorage.memory_region,
-    //                     Nat64.toNat(keyInfo.wrappedBlobAddress),
-    //                     Nat64.toNat(totalSizeFromAlreadyStoredBlob),
-    //                 );
+            // Address of next item
+            Region.storeNat64(memoryStorage.memory_region.region,memoryAddress + offsets.addressOfNextItem, addressOfNextWrappedBlob);
 
-    //                 // Add new item:
-    //                 let storedAddress : Nat64 = create_and_add_new_wrappedblob_into_memory_Internal(memoryStorage, blobToStoreOrUpdate);
+            // Address of previous item
+            Region.storeNat64(memoryStorage.memory_region.region,memoryAddress + offsets.addressOfPreviousItem, addressOfPreviousWrappedBlob);
 
-    //                 // We need to update keyinfo
-    //                 libKeyInfo.update_wrappedBlob_address(memoryStorage, keyInfoAddress, storedAddress);
-    //                 return storedAddress;
+            // store size of 'blobToStore':
+            Region.storeNat64(memoryStorage.memory_region.region,memoryAddress + offsets.internalBlobSize, Nat64.fromNat(blobToStore.size()));
 
-    //             } else {
-    //                 let internalBlobSizeOffset : Nat64 = alreadyStoredWrappedBlobAddress + 8;
-    //                 let internalBlobOffset : Nat64 = internalBlobSizeOffset + 8;
+            // store now the actual blob 'blobToStore'
+            Region.storeBlob(memoryStorage.memory_region.region, memoryAddress + offsets.internalBlob, blobToStore);
 
-    //                 // Update the blob-size value
-    //                 Region.storeNat64(
-    //                     memoryStorage.memory_region.region,
-    //                     internalBlobSizeOffset,
-    //                     Nat64.fromNat(blobToStoreOrUpdateSize),
-    //                 );
+            return memoryAddress;
+        };
 
-    //                 // Update the blob
-    //                 Region.storeBlob(memoryStorage.memory_region.region, internalBlobOffset, blobToStoreOrUpdate);
-    //                 return alreadyStoredWrappedBlobAddress;
-    //             };
-    //         };
-    //         case (_) {
-    //             //The key was not used before
-    //             let addresses = add_new_item_internal_and_update_key_mappings(key, memoryStorage, blobToStoreOrUpdate);
+        //private type KeyInfo = HashTableTypes.KeyInfo;
+        //private func nat32Identity(n : Nat32) : Nat32 { return n };
 
-    //             return addresses.1;
-    //         };
-    //     };
+        // // Returns the wrapped-blob by address - without checking before if item exist.
+        // // So we must be sure that the item on that address exist.
+        // public func get_wrappedBlob_from_memory(memoryStorage : MemoryStorage, address : Nat64) : WrappedBlob {
+        //     let totalSize = Region.loadNat64(memoryStorage.memory_region.region, address);
+        //     let blobResult : Blob = MemoryRegion.loadBlob(memoryStorage.memory_region, Nat64.toNat(address), Nat64.toNat(totalSize));
+        //     return convert_wrappedblob_as_blob_to_wrappedBlob(blobResult);
+        // };
 
-    //     return 0;
+        // // Get the internal blob from WrappedBlob-Address
+        // public func get_internal_blob_from_memory(memoryStorage : MemoryStorage, address : Nat64):Blob{
 
-    // };
+        //     let internalBlobSize = Nat64.toNat(Region.loadNat64(memoryStorage.memory_region.region, address + 8));
+        //     let internalBlobAddress = address + 16;
+        //     return Region.loadBlob(memoryStorage.memory_region.region, internalBlobAddress, internalBlobSize);
+        // };
 
-    // // Delete entry by key
-    // public func delete(key : Blob, memoryStorage : MemoryStorage){
+        // // Add or update value by key
+        // public func add_or_update(key : Blob, memoryStorage : MemoryStorage, blobToStoreOrUpdate : Blob) : Nat64 {
 
-    //     let keyResult = libKeyInfo.get_keyinfo(key, memoryStorage);
-    //     let keyInfoAddress = keyResult.1;
+        //     var hashedKey = Blob.hash(key);
+        //     let getKeyInfoResult : (?KeyInfo, Nat64) = libKeyInfo.get_keyinfo(key, memoryStorage);
+        //     let keyInfoOrNull = getKeyInfoResult.0;
+        //     let keyInfoAddress : Nat64 = getKeyInfoResult.1;
 
-    //     switch (keyResult.0) {
-    //         case (?keyInfo) {
+        //     switch (keyInfoOrNull) {
+        //         case (?keyInfo) {
+        //             //key with value is already existing:
 
-    //             let wrappedBlobAddress : Nat64 = keyInfo.wrappedBlobAddress;
+        //             let alreadyStoredWrappedBlobAddress : Nat64 = keyInfo.wrappedBlobAddress;
+        //             let totalSizeFromAlreadyStoredBlob : Nat64 = get_wrapped_blob_totalsize(memoryStorage, alreadyStoredWrappedBlobAddress);
+        //             let blobToStoreOrUpdateSize : Nat = blobToStoreOrUpdate.size();
+        //             var updatePossible : Bool = false;
 
-    //             libKeyInfo.delete_keyinfo(memoryStorage, keyInfoAddress);
+        //             if (totalSizeFromAlreadyStoredBlob > 16) {
 
-    //             let wrappedBlobSize = get_wrapped_blob_totalsize(memoryStorage, wrappedBlobAddress);
+        //                 let freeSizeAvailable : Nat = Nat64.toNat(totalSizeFromAlreadyStoredBlob - 16);
+        //                 if (blobToStoreOrUpdateSize <= freeSizeAvailable) {
+        //                     updatePossible := true;
+        //                 };
+        //             };
 
-    //             ignore MemoryRegion.removeBlob(
-    //                 memoryStorage.memory_region,
-    //                 Nat64.toNat(wrappedBlobAddress),
-    //                 Nat64.toNat(wrappedBlobSize),
-    //             );
+        //             if (updatePossible == false) {
 
-    //             // Delete value from index-mappings-list
-    //             libIndexMapping.remove_value(key, memoryStorage, keyInfoAddress);
+        //                 //Delete the old item:
+        //                 ignore MemoryRegion.removeBlob(
+        //                     memoryStorage.memory_region,
+        //                     Nat64.toNat(keyInfo.wrappedBlobAddress),
+        //                     Nat64.toNat(totalSizeFromAlreadyStoredBlob),
+        //                 );
 
-    //         };
-    //         case (_) {
-    //            // do nothing
-    //         };
-    //     };
-    // };
+        //                 // Add new item:
+        //                 let storedAddress : Nat64 = create_and_add_new_wrappedblob_into_memory_Internal(memoryStorage, blobToStoreOrUpdate);
 
-    // // Helper functions:
+        //                 // We need to update keyinfo
+        //                 libKeyInfo.update_wrappedBlob_address(memoryStorage, keyInfoAddress, storedAddress);
+        //                 return storedAddress;
 
-    // // Add new entry (key and value). Assumption here is that the key was not existing before.
-    // private func add_new_item_internal_and_update_key_mappings(
-    //     key : Blob,
-    //     memoryStorage : MemoryStorage,
-    //     blobToStore : Blob,
-    // ) : (Nat64 /* keyinfo-address*/, Nat64 /* stored wrapBlob address*/) {
+        //             } else {
+        //                 let internalBlobSizeOffset : Nat64 = alreadyStoredWrappedBlobAddress + 8;
+        //                 let internalBlobOffset : Nat64 = internalBlobSizeOffset + 8;
 
-    //     // store the blob into memory
-    //     let valueStoredAddressNat64 : Nat64 = create_and_add_new_wrappedblob_into_memory_Internal(memoryStorage, blobToStore);
+        //                 // Update the blob-size value
+        //                 Region.storeNat64(
+        //                     memoryStorage.memory_region.region,
+        //                     internalBlobSizeOffset,
+        //                     Nat64.fromNat(blobToStoreOrUpdateSize),
+        //                 );
 
-    //     // First add dummy blob into memory
-    //     let dummyKeyInfoSizeNeeded:Nat = key.size() + 24;
-    //     let dummyBytes = Array.tabulate<Nat8>(dummyKeyInfoSizeNeeded, func i = 255);
-    //     let dummyBlob:Blob = Blob.fromArray(dummyBytes);
-    //     let keyInfoAddress:Nat = MemoryRegion.addBlob(memoryStorage.memory_region, dummyBlob);
-    //     let keyInfoAddressNat64:Nat64 = Nat64.fromNat(keyInfoAddress);
+        //                 // Update the blob
+        //                 Region.storeBlob(memoryStorage.memory_region.region, internalBlobOffset, blobToStoreOrUpdate);
+        //                 return alreadyStoredWrappedBlobAddress;
+        //             };
+        //         };
+        //         case (_) {
+        //             //The key was not used before
+        //             let addresses = add_new_item_internal_and_update_key_mappings(key, memoryStorage, blobToStoreOrUpdate);
 
-    //     // Now update the keyinfo memory values
-    //     Region.storeNat64(memoryStorage.memory_region.region,keyInfoAddressNat64, Nat64.fromNat(dummyKeyInfoSizeNeeded));
-    //     Region.storeNat64(memoryStorage.memory_region.region,keyInfoAddressNat64 + 8, Nat64.fromNat(key.size()));
-    //     Region.storeNat64(memoryStorage.memory_region.region,keyInfoAddressNat64 + 16, valueStoredAddressNat64);
-    //     Region.storeBlob(memoryStorage.memory_region.region, keyInfoAddressNat64 + 24, key);
+        //             return addresses.1;
+        //         };
+        //     };
 
-    //     // Add entry in index_mappings
-    //     var newList : List.List<Nat64> = List.nil<Nat64>();
-    //     newList := List.push<Nat64>(keyInfoAddressNat64, newList);
-    //     let hashedKey = Blob.hash(key);
-    //     StableTrieMap.put(memoryStorage.index_mappings, Nat32.equal, nat32Identity, hashedKey, newList);
+        //     return 0;
 
-    //     return (keyInfoAddressNat64, valueStoredAddressNat64);
-    // };
+        // };
 
-    // // First we will store dummy blob into memory and then manipulate the memory-location so that all necessary information is included.
-    // // This method is faster than the native approach: create WrappedBlob-type and then convert to blob and then store that blob into memory. 
-    // private func create_and_add_new_wrappedblob_into_memory_Internal(memoryStorage : MemoryStorage, internalBlobToStore : Blob) : Nat64 {
+        // // Delete entry by key
+        // public func delete(key : Blob, memoryStorage : MemoryStorage){
 
-    //     // First add dummy blob into memory
-    //     let wrappedBlobSizeNeeded:Nat = internalBlobToStore.size() + 16 + Nat64.toNat(memoryStorage.replaceBufferSize);
-    //     let dummyBytes = Array.tabulate<Nat8>(wrappedBlobSizeNeeded, func i = 255);
-    //     let dummyBlob:Blob = Blob.fromArray(dummyBytes);
-    //     let memoryAddress:Nat = MemoryRegion.addBlob(memoryStorage.memory_region, dummyBlob);
-    //     let memoryAddressNat64:Nat64 = Nat64.fromNat(memoryAddress);
+        //     let keyResult = libKeyInfo.get_keyinfo(key, memoryStorage);
+        //     let keyInfoAddress = keyResult.1;
 
-    //     // Now update the wrappedBlob from writing into memory-location directly
-    //     Region.storeNat64(memoryStorage.memory_region.region,  memoryAddressNat64, Nat64.fromNat(wrappedBlobSizeNeeded));
-    //     Region.storeNat64(memoryStorage.memory_region.region,  memoryAddressNat64 + 8, Nat64.fromNat(internalBlobToStore.size()));
-    //     Region.storeBlob(memoryStorage.memory_region.region, memoryAddressNat64 + 16 , internalBlobToStore);
+        //     switch (keyResult.0) {
+        //         case (?keyInfo) {
 
-    //     return memoryAddressNat64;
-    // };
+        //             let wrappedBlobAddress : Nat64 = keyInfo.wrappedBlobAddress;
 
-    
-    // private func create_Wrapped_blob_from_internalblob(blob : Blob) : WrappedBlob {
+        //             libKeyInfo.delete_keyinfo(memoryStorage, keyInfoAddress);
 
-    //     let internalBlobSize = Nat64.fromNat(blob.size());
-    //     let wrappedBlob : WrappedBlob = {
-    //         totalSize : Nat64 = internalBlobSize + 16;  //This will be overwritten (== recalculated) during conversion to blob 
-    //         internalBlobSize : Nat64 = internalBlobSize;
-    //         internalBlob : Blob = blob;
-    //     };
-    //     return wrappedBlob;
-    // };
+        //             let wrappedBlobSize = get_wrapped_blob_totalsize(memoryStorage, wrappedBlobAddress);
 
-    // // store the wrapped-blob as blob into memory
-    // private func put_wrappedblob_as_blob_directly_into_memory(memoryStorage : MemoryStorage, wrappedblob_as_blob : Blob) : Nat64 {
+        //             ignore MemoryRegion.removeBlob(
+        //                 memoryStorage.memory_region,
+        //                 Nat64.toNat(wrappedBlobAddress),
+        //                 Nat64.toNat(wrappedBlobSize),
+        //             );
 
-    //     let valueStoredAddress = MemoryRegion.addBlob(memoryStorage.memory_region, wrappedblob_as_blob);
-    //     let valueStoredAddressNat64 : Nat64 = Nat64.fromNat(valueStoredAddress);
-    //     return valueStoredAddressNat64;
-    // };
+        //             // Delete value from index-mappings-list
+        //             libIndexMapping.remove_value(key, memoryStorage, keyInfoAddress);
 
-    // private func get_wrapped_blob_totalsize(memoryStorage : MemoryStorage, address : Nat64) : Nat64 {
-    //     let totalSize = Region.loadNat64(memoryStorage.memory_region.region, address);
-    //     return totalSize;
-    // };
+        //         };
+        //         case (_) {
+        //            // do nothing
+        //         };
+        //     };
+        // };
 
-    // public func get_internal_blob_from_blob(item : Blob) : Blob {
-        
-    //     let blobArray:[Nat8] = Blob.toArray(item);
-    //     let internalBlobSize : Nat64 = Binary.LittleEndian.toNat64FromOffset(blobArray , 8);
-    //     let internalBlob : Blob = Blob.fromArray(Array.subArray(blobArray, 16, Nat64.toNat(internalBlobSize)));
+        // // Helper functions:
 
-    //     return internalBlob;
-    // };
+        // // Add new entry (key and value). Assumption here is that the key was not existing before.
+        // private func add_new_item_internal_and_update_key_mappings(
+        //     key : Blob,
+        //     memoryStorage : MemoryStorage,
+        //     blobToStore : Blob,
+        // ) : (Nat64 /* keyinfo-address*/, Nat64 /* stored wrapBlob address*/) {
 
+        //     // store the blob into memory
+        //     let valueStoredAddressNat64 : Nat64 = create_and_add_new_wrappedblob_into_memory_Internal(memoryStorage, blobToStore);
 
-    //   private func convert_wrappedblob_as_blob_to_wrappedBlob(item : Blob) : WrappedBlob {
+        //     // First add dummy blob into memory
+        //     let dummyKeyInfoSizeNeeded:Nat = key.size() + 24;
+        //     let dummyBytes = Array.tabulate<Nat8>(dummyKeyInfoSizeNeeded, func i = 255);
+        //     let dummyBlob:Blob = Blob.fromArray(dummyBytes);
+        //     let keyInfoAddress:Nat = MemoryRegion.addBlob(memoryStorage.memory_region, dummyBlob);
+        //     let keyInfoAddressNat64:Nat64 = Nat64.fromNat(keyInfoAddress);
 
-    //     let blobArray:[Nat8] = Blob.toArray(item);
-    //     let totalBytes : Nat64 = Binary.LittleEndian.toNat64(blobArray);
-    //     let internalBlobSize : Nat64 = Binary.LittleEndian.toNat64FromOffset(blobArray, 8);
-    //     let internalBlob : Blob = Blob.fromArray(Array.subArray(blobArray, 16,Nat64.toNat(internalBlobSize)));
+        //     // Now update the keyinfo memory values
+        //     Region.storeNat64(memoryStorage.memory_region.region,keyInfoAddressNat64, Nat64.fromNat(dummyKeyInfoSizeNeeded));
+        //     Region.storeNat64(memoryStorage.memory_region.region,keyInfoAddressNat64 + 8, Nat64.fromNat(key.size()));
+        //     Region.storeNat64(memoryStorage.memory_region.region,keyInfoAddressNat64 + 16, valueStoredAddressNat64);
+        //     Region.storeBlob(memoryStorage.memory_region.region, keyInfoAddressNat64 + 24, key);
 
-    //     let result : WrappedBlob = {
-    //         totalSize = totalBytes;
+        //     // Add entry in index_mappings
+        //     var newList : List.List<Nat64> = List.nil<Nat64>();
+        //     newList := List.push<Nat64>(keyInfoAddressNat64, newList);
+        //     let hashedKey = Blob.hash(key);
+        //     StableTrieMap.put(memoryStorage.index_mappings, Nat32.equal, nat32Identity, hashedKey, newList);
 
-    //         //Size of the value-blob
-    //         internalBlobSize : Nat64 = internalBlobSize;
+        //     return (keyInfoAddressNat64, valueStoredAddressNat64);
+        // };
 
-    //         //The blob-content to store
-    //         internalBlob : Blob = internalBlob;
-    //     };
-    //     return result;
+        // // First we will store dummy blob into memory and then manipulate the memory-location so that all necessary information is included.
+        // // This method is faster than the native approach: create WrappedBlob-type and then convert to blob and then store that blob into memory.
+        // private func create_and_add_new_wrappedblob_into_memory_Internal(memoryStorage : MemoryStorage, internalBlobToStore : Blob) : Nat64 {
 
-    // };
+        //     // First add dummy blob into memory
+        //     let wrappedBlobSizeNeeded:Nat = internalBlobToStore.size() + 16 + Nat64.toNat(memoryStorage.replaceBufferSize);
+        //     let dummyBytes = Array.tabulate<Nat8>(wrappedBlobSizeNeeded, func i = 255);
+        //     let dummyBlob:Blob = Blob.fromArray(dummyBytes);
+        //     let memoryAddress:Nat = MemoryRegion.addBlob(memoryStorage.memory_region, dummyBlob);
+        //     let memoryAddressNat64:Nat64 = Nat64.fromNat(memoryAddress);
 
-    
-    // private func convert_wrappedblob_to_blob(memoryStorage: MemoryStorage, item : WrappedBlob, addReplaceBuffer:Bool) : Blob {
+        //     // Now update the wrappedBlob from writing into memory-location directly
+        //     Region.storeNat64(memoryStorage.memory_region.region,  memoryAddressNat64, Nat64.fromNat(wrappedBlobSizeNeeded));
+        //     Region.storeNat64(memoryStorage.memory_region.region,  memoryAddressNat64 + 8, Nat64.fromNat(internalBlobToStore.size()));
+        //     Region.storeBlob(memoryStorage.memory_region.region, memoryAddressNat64 + 16 , internalBlobToStore);
 
-    //     let blobSizeBytes : Nat64 = Nat64.fromNat(item.internalBlob.size());
-    //     var totalBytes : Nat64 = blobSizeBytes + 16; // 16 bytes => 2 * Nat64 = 2 * 8 bytes = 16 bytes
-    //     if (addReplaceBuffer == true){
-    //         totalBytes:=totalBytes + memoryStorage.replaceBufferSize;
-    //     };
+        //     return memoryAddressNat64;
+        // };
 
-    //     let blob_totalSize : [Nat8] = Binary.LittleEndian.fromNat64(totalBytes);
-    //     let blob_internalBlobSize : [Nat8] = Binary.LittleEndian.fromNat64(item.internalBlobSize);
+        // private func create_Wrapped_blob_from_internalblob(blob : Blob) : WrappedBlob {
 
-    //     var iter = Iter.fromArray(blob_totalSize);
-    //     iter := Itertools.chain(iter, Iter.fromArray(blob_internalBlobSize));
-    //     iter := Itertools.chain(iter, item.internalBlob.vals());
-    //     if (addReplaceBuffer == true and memoryStorage.replaceBufferSize > 0){
-    //         // Add 8 bytes (Nat64 as blob)
-             
-    //         iter := Itertools.chain(iter, Iter.fromArray(memoryStorage.replaceBufferAsBlob));
-    //     };
+        //     let internalBlobSize = Nat64.fromNat(blob.size());
+        //     let wrappedBlob : WrappedBlob = {
+        //         totalSize : Nat64 = internalBlobSize + 16;  //This will be overwritten (== recalculated) during conversion to blob
+        //         internalBlobSize : Nat64 = internalBlobSize;
+        //         internalBlob : Blob = blob;
+        //     };
+        //     return wrappedBlob;
+        // };
 
-    //     let result : Blob = Blob.fromArray(Iter.toArray(iter));
-    //     return result;
+        // // store the wrapped-blob as blob into memory
+        // private func put_wrappedblob_as_blob_directly_into_memory(memoryStorage : MemoryStorage, wrappedblob_as_blob : Blob) : Nat64 {
 
-    // };
-    
+        //     let valueStoredAddress = MemoryRegion.addBlob(memoryStorage.memory_region, wrappedblob_as_blob);
+        //     let valueStoredAddressNat64 : Nat64 = Nat64.fromNat(valueStoredAddress);
+        //     return valueStoredAddressNat64;
+        // };
 
+        // private func get_wrapped_blob_totalsize(memoryStorage : MemoryStorage, address : Nat64) : Nat64 {
+        //     let totalSize = Region.loadNat64(memoryStorage.memory_region.region, address);
+        //     return totalSize;
+        // };
+
+        // public func get_internal_blob_from_blob(item : Blob) : Blob {
+
+        //     let blobArray:[Nat8] = Blob.toArray(item);
+        //     let internalBlobSize : Nat64 = Binary.LittleEndian.toNat64FromOffset(blobArray , 8);
+        //     let internalBlob : Blob = Blob.fromArray(Array.subArray(blobArray, 16, Nat64.toNat(internalBlobSize)));
+
+        //     return internalBlob;
+        // };
+
+        //   private func convert_wrappedblob_as_blob_to_wrappedBlob(item : Blob) : WrappedBlob {
+
+        //     let blobArray:[Nat8] = Blob.toArray(item);
+        //     let totalBytes : Nat64 = Binary.LittleEndian.toNat64(blobArray);
+        //     let internalBlobSize : Nat64 = Binary.LittleEndian.toNat64FromOffset(blobArray, 8);
+        //     let internalBlob : Blob = Blob.fromArray(Array.subArray(blobArray, 16,Nat64.toNat(internalBlobSize)));
+
+        //     let result : WrappedBlob = {
+        //         totalSize = totalBytes;
+
+        //         //Size of the value-blob
+        //         internalBlobSize : Nat64 = internalBlobSize;
+
+        //         //The blob-content to store
+        //         internalBlob : Blob = internalBlob;
+        //     };
+        //     return result;
+
+        // };
+
+        // private func convert_wrappedblob_to_blob(memoryStorage: MemoryStorage, item : WrappedBlob, addReplaceBuffer:Bool) : Blob {
+
+        //     let blobSizeBytes : Nat64 = Nat64.fromNat(item.internalBlob.size());
+        //     var totalBytes : Nat64 = blobSizeBytes + 16; // 16 bytes => 2 * Nat64 = 2 * 8 bytes = 16 bytes
+        //     if (addReplaceBuffer == true){
+        //         totalBytes:=totalBytes + memoryStorage.replaceBufferSize;
+        //     };
+
+        //     let blob_totalSize : [Nat8] = Binary.LittleEndian.fromNat64(totalBytes);
+        //     let blob_internalBlobSize : [Nat8] = Binary.LittleEndian.fromNat64(item.internalBlobSize);
+
+        //     var iter = Iter.fromArray(blob_totalSize);
+        //     iter := Itertools.chain(iter, Iter.fromArray(blob_internalBlobSize));
+        //     iter := Itertools.chain(iter, item.internalBlob.vals());
+        //     if (addReplaceBuffer == true and memoryStorage.replaceBufferSize > 0){
+        //         // Add 8 bytes (Nat64 as blob)
+
+        //         iter := Itertools.chain(iter, Iter.fromArray(memoryStorage.replaceBufferAsBlob));
+        //     };
+
+        //     let result : Blob = Blob.fromArray(Iter.toArray(iter));
+        //     return result;
+
+        // };
+
+    };
 };

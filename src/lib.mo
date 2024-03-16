@@ -12,15 +12,15 @@ import Array "mo:base/Array";
 import BlobifyModule "mo:memory-buffer/Blobify";
 import { MemoryRegion } "mo:memory-region";
 import StableTrieMap "mo:StableTrieMap";
-import MemoryHashTableModule "/modules/memoryHashTable";
+import MemoryHashListModule "/modules/memoryHashList";
 
 module {
 	
-	public type MemoryStorage = HashTableTypes.MemoryStorage;
-	private type KeyInfo = HashTableTypes.KeyInfo;
-	private type WrappedBlob = HashTableTypes.WrappedBlob;
+	public type MemoryStorage = HashListTypes.MemoryStorage;
+	//private type KeyInfo = HashTableTypes.KeyInfo;
+	//private type WrappedBlob = HashTableTypes.WrappedBlob;
 	public let Blobify = BlobifyModule;
-	public let MemoryHashTable = MemoryHashTableModule.MemoryHashTable;
+	public let MemoryHashList = MemoryHashListModule.MemoryHashList;
 
 	public func get_new_memory_storage(replaceBufferSizeInBytes:Nat) : MemoryStorage {
 
