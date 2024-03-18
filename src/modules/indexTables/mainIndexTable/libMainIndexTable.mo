@@ -29,11 +29,11 @@ module {
         private let offset = CommonTypes.Offset_IndexTable;
         private let tableIndexMaxEntries : Nat64 = tableIndexMaxEntriesToUse;
 
-        public func get_items_count(mainIndexTableAddress : Nat64) : Nat64 {
+        public func get_entries_count(mainIndexTableAddress : Nat64) : Nat64 {
             Region.loadNat64(memoryStorage.memory_region.region, mainIndexTableAddress + offset.entriesCount);
         };
 
-        public func set_items_count(mainIndexTableAddress : Nat64, newCountValue : Nat64) {
+        public func set_entries_count(mainIndexTableAddress : Nat64, newCountValue : Nat64) {
             Region.storeNat64(
                 memoryStorage.memory_region.region,
                 mainIndexTableAddress + offset.entriesCount,
@@ -75,19 +75,29 @@ module {
 
         // Here no check is taking place. We should only call this method when we are sure
         // that the item fit in the corresponding initial allocated memory size.  
-        public func append_item(indexTableAddress:Nat64, wrappedBlobAddress:Nat64 ){
+        public func append_item(indexTableAddress:Nat64, wrappedBlobAddress:Nat64 ):(Bool, Nat64, Nat64){
             
             let region = memoryStorage.memory_region.region;
-            let currentCount = get_items_count(indexTableAddress);
-            let memoryPosition:Nat64 = offset.minSize + currentCount * 8;
+            let currentCount = get_entries_count(indexTableAddress);
+            if (currentCount < tableIndexMaxEntries){
+                let memoryPosition:Nat64 = offset.minSize + currentCount * 8;
+                Region.storeNat64(region, indexTableAddress + memoryPosition, wrappedBlobAddress);
+                set_entries_count(indexTableAddress, currentCount + 1);
+                return (false, indexTableAddress, currentCount + 1);
+            }else{
+                // we need to create new table
+                let newMainIndexTable = create_new(
+                    Option.make(wrappedBlobAddress),
+                    Option.make(indexTableAddress)
+                );
+                return (true, newMainIndexTable, 1);
 
-            Region.storeNat64(region, indexTableAddress + memoryPosition, wrappedBlobAddress);
-            set_items_count(indexTableAddress, currentCount + 1);
-           
+            };
         };
 
         // create empty main-index-table and store into memory
-        public func create_new() : Nat64 {
+        public func create_new(wrappedBlobAddress:?Nat64,
+            prevTableAddress:?Nat64) : Nat64 {
             let region = memoryStorage.memory_region.region;
 
             let sizeNeeded : Nat64 = offset.minSize + tableIndexMaxEntries * 8;
@@ -97,10 +107,11 @@ module {
             );
             let addressNat64 : Nat64 = Nat64.fromNat(address);
 
-            // let addressOfPreviousTable:Nat64 = Option.get<Nat64>(prevTableAddress,0);
+            let addressOfPreviousTable:Nat64 = Option.get<Nat64>(prevTableAddress,0);
             // let addressOfNextTable:Nat64 = Option.get<Nat64>(nextTableAddress, 0);
             // let addressOfParentTable:Nat64 = Option.get<Nat64>(parentTableAddress,0);
             // let indexInsideParentTable:Nat64 = Option.get<Nat64>(parentTableIndex, 0);
+            let addressOfWrappedBlob:Nat64 = Option.get<Nat64>(wrappedBlobAddress, 0);
 
             // set identifier
             Region.storeNat64(
@@ -110,8 +121,11 @@ module {
             );
 
             // entries count
-            Region.storeNat64(region, addressNat64 + offset.entriesCount, 0);
-
+            if (wrappedBlobAddress == null){
+                Region.storeNat64(region, addressNat64 + offset.entriesCount, 0);
+            } else{
+                Region.storeNat64(region, addressNat64 + offset.entriesCount, 1);
+            };
             // sum of all items count. (here it is always the same number as entries count,
             // because it is maintable. And therefore we can let this value be always 0)
             Region.storeNat64(region, addressNat64 + offset.sumOfItemsCount, 0);
@@ -123,10 +137,10 @@ module {
 
             // set next and previous main-index-table address
             Region.storeNat64(region, addressNat64 + offset.nextIndexTable, 0);
-            Region.storeNat64(region, addressNat64 + offset.previousIndexTable, 0);
+            Region.storeNat64(region, addressNat64 + offset.previousIndexTable, addressOfPreviousTable);
 
             // // Set the wrapped-blob address (at index location 0)
-            // Region.storeNat64(region, addressNat64 + offset.minSize, 0);
+            Region.storeNat64(region, addressNat64 + offset.minSize, addressOfWrappedBlob);
 
             return addressNat64;
         };

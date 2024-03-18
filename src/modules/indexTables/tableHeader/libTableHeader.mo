@@ -35,6 +35,15 @@ module {
             );
         };
 
+          public func set_last_stored_wrapped_blob_address(mainIndexTableAddress : Nat64,
+           lastUsedWrappedBlobAddress:Nat64){
+            Region.storeNat64(
+                memoryStorage.memory_region.region, 
+                mainIndexTableAddress + offset.addressOfLastWrappedBlob,
+                lastUsedWrappedBlobAddress
+            );
+        };
+
         public func get_total_items_count(memoryAddress:Nat64):Nat64{
             Region.loadNat64(memoryStorage.memory_region.region, memoryAddress + offset.totalEntriesCount);
         };
@@ -46,6 +55,12 @@ module {
                 memoryAddress + offset.totalEntriesCount,
                 newCount
             );
+        };
+
+        public func get_end_main_index_table(indexHeaderTable:Nat64):Nat64{
+            Region.loadNat64(
+                memoryStorage.memory_region.region, 
+                indexHeaderTable + offset.endMainIndexTable);
         };
 
         public func create_new(mainIndexTableAddress : Nat64, parentIndexTableAddress:Nat64,

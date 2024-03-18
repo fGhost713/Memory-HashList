@@ -36,8 +36,48 @@ module {
         public let mainIndexTable = LibMainIndexTable.libMainIndexTable(memoryStorageToUse,tableIndexMaxEntriesToUse);
         public let parentIndexTable = LibParentIndexTable.libParentIndexTable(memoryStorageToUse,tableIndexMaxEntriesToUse);
 
+        public func create_tables_and_append_wrappedBlobAddress(wrappedBlobMemoryAddress:Nat64)
+        : (Nat64 /*table header*/, Nat64 /*main index table*/, Nat64 /*parent index table*/){
+                // create parent-index-table
+                let parent_index_table = parentIndexTable.create_new();
 
-        
+                // create new main-index-table
+                let main_index_table_address = mainIndexTable.create_new();
+
+                // create new index-table-header
+                let table_header_address = tableHeader.create_new(
+                    main_index_table_address,
+                    parent_index_table,
+                    wrappedBlobMemoryAddress,
+                    1
+                );
+
+                // update the tables
+                parentIndexTable.append_item(parent_index_table,1, main_index_table_address);
+                ignore mainIndexTable.append_item(main_index_table_address,wrappedBlobMemoryAddress);
+                mainIndexTable.set_parent_table_address(main_index_table_address, parent_index_table);
+                mainIndexTable.set_parent_table_used_index(main_index_table_address, 0);
+                (table_header_address, main_index_table_address, parent_index_table);
+
+        };
+
+        public func append_item(tableHeaderAddress:Nat64, wrappedBlobAddressToAdd:Nat64 ){
+
+            // update the last stored wrapped-blob address in header-table
+            tableHeader.set_last_stored_wrapped_blob_address(tableHeaderAddress,wrappedBlobAddressToAdd);
+            let lastMainIndexTable = tableHeader.get_end_main_index_table(tableHeaderAddress);
+            let appendResult:(Bool, Nat64) = mainIndexTable.append_item(lastMainIndexTable, wrappedBlobAddressToAdd);
+
+            let newTableWasCreated = appendResult.0;
+            let indexMainTable = appendResult.1;
+            let sumOfItemsCountInTable = appendResult.2;
+
+            parentIndexTable.append_item2(tableHeaderAddress,sumOfItemsCountInTable,indexMainTable);
+            
+
+
+            //return 0;
+        };
         
         // public func create_new_index_tables(wrappedBlobMemoryAddress : Nat64): (Nat64, Nat64,Nat64){
 

@@ -25,7 +25,7 @@ module{
         previousIndexTable:Nat64;
     };
 
-       public let Offset_IndexTable = {
+    public let Offset_IndexTable = {
          
         identifier:Nat64 = 0;
 
@@ -48,6 +48,9 @@ module{
         minSize:Nat64 = 56;
 
     };
+
+
+  
 
 
    

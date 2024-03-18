@@ -49,8 +49,7 @@ module {
             var keyInfoWasFound:Bool = false;
             var keyInfoAddress:Nat64 = 0;
 
-            // store the blob:
-            let wrappedBlobMemoryAddress = libWrappedBlob.create_new(value, null,null);
+            
 
             if (List.size(memoryAddresses) > 0){
                 let getKeyInfoAddressResult: (Bool /*found*/, Nat64 /*address*/) = libKeyInfo.get_correct_keyinfo_address(key,memoryAddresses);
@@ -59,28 +58,15 @@ module {
             };
 
             if (List.size(memoryAddresses) == 0 or keyInfoWasFound == false){ //Key not exist  
-                // create parent-index-table
-                let parent_index_table = libIndexTables.parentIndexTable.create_new();
+                
+                // store the blob:
+                let wrappedBlobMemoryAddress = libWrappedBlob.create_new(value, null,null);
 
-                // create new main-index-table
-                let main_index_table_address = libIndexTables.mainIndexTable.create_new();
-
-                // create new index-table-header
-                let table_header_address = libIndexTables.tableHeader.create_new(
-                    main_index_table_address,
-                    parent_index_table,
-                    wrappedBlobMemoryAddress,
-                    1
-                );
-
-                // update the tables
-                libIndexTables.parentIndexTable.append_item(parent_index_table,1, main_index_table_address);
-                libIndexTables.mainIndexTable.append_item(main_index_table_address,wrappedBlobMemoryAddress);
-                libIndexTables.mainIndexTable.set_parent_table_address(main_index_table_address, parent_index_table);
-                libIndexTables.mainIndexTable.set_parent_table_used_index(main_index_table_address, 0);
-
+                // create the tables
+                let tableAddresses = libIndexTables.create_tables_and_append_wrappedBlobAddress(wrappedBlobMemoryAddress);
+                
                 // create corresponding key-info
-                keyInfoAddress := libKeyInfo.create_new(key, table_header_address);
+                keyInfoAddress := libKeyInfo.create_new(key, tableAddresses.0);
                 
                 // Push libKeyInfo-Address as value for the specified key 
                 libKey.add_entry(hashedKey,keyInfoAddress);
@@ -88,27 +74,38 @@ module {
                 let result:ResponseResultTypes.ResponseResult = {
                     wrappedItemExist = true;
                     memoryAddress_wrappedBlob:Nat64 = wrappedBlobMemoryAddress;
-                    memoryAddress_indexTableHeader:Nat64 = table_header_address;
+                    memoryAddress_indexTableHeader:Nat64 = tableAddresses.0;
                     blob:?Blob = Option.make(value);
                 };
                 return #ok(result);
 
-            } else{
+            } else if (keyInfoWasFound == true){
                 
-                let indexTableHeader_address = libKeyInfo.get_address_of_index_table_header(keyInfoAddress);
-                
+                // get the address of last stored wrapped-blob for this key
                 let lastStoredWrappedBlobAddress = libIndexTables.tableHeader.get_last_stored_wrapped_blob_address(indexTableHeader_address);
 
-                // store the blob:
-                let wrappedBlobMemoryAddress = libWrappedBlob.create_new(
-                    value, 
-                    Option.make(lastStoredWrappedBlobAddress),null
-                );
+                // create new wrapped-blob and store the blob-value:
+                let wrappedBlobMemoryAddress = libWrappedBlob.create_new(value,Option.make(lastStoredWrappedBlobAddress),null);
+                
+                // update the next-value of previous wrapped-blob
+                libWrappedBlob.update_next_blob_address_value(lastStoredWrappedBlobAddress,wrappedBlobMemoryAddress);
 
-                let currentItemsCountInWrappedBlob = libIndexTables.mainIndexTable.get_items_count();
+                let indexTableHeader_address = libKeyInfo.get_address_of_index_table_header(keyInfoAddress);
 
-                // Update next-address of previous wrapped-blob
-                libWrappedBlob.update_next_blob_address_value(lastStoredWrappedBlobAddress, wrappedBlobMemoryAddress);
+                libIndexTables.append_item(indexTableHeader_address, wrappedBlobMemoryAddress);
+
+                
+
+                // // store the blob:
+                // let wrappedBlobMemoryAddress = libWrappedBlob.create_new(
+                //     value, 
+                //     Option.make(lastStoredWrappedBlobAddress),null
+                // );
+
+                // let currentItemsCountInWrappedBlob = libIndexTables.mainIndexTable.get_items_count();
+
+                // // Update next-address of previous wrapped-blob
+                // libWrappedBlob.update_next_blob_address_value(lastStoredWrappedBlobAddress, wrappedBlobMemoryAddress);
 
 
                 //let newCount = libIndexTables.tableHeader.items_count_increase(indexTableHeader_address,1);
@@ -139,6 +136,8 @@ module {
 
                 return #ok("Value for existing key was added.");
 
+            } else{
+                return #err("The key-values list seems to be corrupt.");
             };
         };
 
