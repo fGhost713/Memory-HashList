@@ -1,5 +1,4 @@
 import Blob "mo:base/Blob";
-import HashTableTypes "../types/hashListTypes";
 import StableTrieMap "mo:StableTrieMap";
 import Nat32 "mo:base/Nat32";
 import Nat64 "mo:base/Nat64";
@@ -21,8 +20,8 @@ module {
 
     // The key-operations for the hashlist-key are defined here.
     // For one key we can have multiple (entrypoint) memory-addresses, because
-    // the key is NAT32 and collision can occur. Therefore all the memory entrypoints
-    // for a specific nat32 key are associated (in List) to this key.
+    // the hashed-key can have collisions. Therefore all the memory entrypoints
+    // for a specific key are associated (in List) to this key.
     // The memory entrypoints are memory locations where the 'KeyInfo' blob is stored.
     public class libKey(memoryStorageToUse : MemoryStorage){
 
@@ -36,32 +35,48 @@ module {
             blobHashFunction:=blobHash;
         };
 
+
+        // Add the memory-address of the keyinfo into StableTrieMap for the corresponding hashed-key
         public func add_entry(hashedKey:Nat32, keyinfoMemoryAddress:Nat64){
-            let memoryAddressesOrNull:?List.List<Nat64> = StableTrieMap.get(memoryStorage.index_mappings, Nat32.equal, nat32IdentityFunction, hashedKey);
+            
+            let memoryAddressesOrNull:?List.List<Nat64> = 
+            StableTrieMap.get(
+                memoryStorage.keyToKeyInfoAddressMappings, 
+                Nat32.equal, 
+                nat32IdentityFunction, 
+                hashedKey
+            );
+
             switch (memoryAddressesOrNull) {
                 case (?memoryAddresses) { // key was existing
 
                     let foundItemOrNull:?Nat64 = List.find<Nat64>(memoryAddresses,func n { n == keyinfoMemoryAddress });
                     if (foundItemOrNull == null){ // Only add the value if not already existing
                         let newList = List.push<Nat64>(keyinfoMemoryAddress, memoryAddresses);
-                        StableTrieMap.put(memoryStorage.index_mappings, Nat32.equal, nat32IdentityFunction, hashedKey, newList);
+                        StableTrieMap.put(memoryStorage.keyToKeyInfoAddressMappings, Nat32.equal, nat32IdentityFunction, hashedKey, newList);
                     }
                 };
                 case (_) {
                     var newList = List.nil<Nat64>();
                     newList := List.push<Nat64>(keyinfoMemoryAddress, newList);
-                    StableTrieMap.put(memoryStorage.index_mappings, Nat32.equal, nat32IdentityFunction, hashedKey, newList);
+                    StableTrieMap.put(memoryStorage.keyToKeyInfoAddressMappings, Nat32.equal, nat32IdentityFunction, hashedKey, newList);
                 };
             };
         };
 
-        public func get_key_vals():Iter.Iter<Nat32>{
-            StableTrieMap.keys(memoryStorage.index_mappings);
+        // Returns all the used key-hashes.
+        public func get_key_hashes():Iter.Iter<Nat32>{
+            StableTrieMap.keys(memoryStorage.keyToKeyInfoAddressMappings);
         };
 
+   
         public func get_vals_for_key(key:Blob):List.List<Nat64> {
-            var hashedKey : Nat32 =  blobHashFunction(key);
-            let result = StableTrieMap.get(memoryStorage.index_mappings, Nat32.equal, nat32IdentityFunction, hashedKey);
+            let hashedKey : Nat32 =  blobHashFunction(key);
+            get_vals_for_hashed_key(hashedKey);
+        };
+
+        public func get_vals_for_hashed_key(hashedKey:Nat32):List.List<Nat64>{
+            let result = StableTrieMap.get(memoryStorage.keyToKeyInfoAddressMappings, Nat32.equal, nat32IdentityFunction, hashedKey);
             if (result == null){
                 return List.nil<Nat64>();
             };
@@ -71,18 +86,18 @@ module {
 
         // Remove key from index-mapping list
         public func remove_value(hashedKey:Nat32, valueToRemove : Nat64) {
-            let memoryAddressesOrNull = StableTrieMap.get(memoryStorage.index_mappings, Nat32.equal, nat32IdentityFunction, hashedKey);
+            let memoryAddressesOrNull = StableTrieMap.get(memoryStorage.keyToKeyInfoAddressMappings, Nat32.equal, nat32IdentityFunction, hashedKey);
             switch (memoryAddressesOrNull) {
                 case (?memoryAddresses) {
                     let newList = List.filter<Nat64>(memoryAddresses, func n { n != valueToRemove });
                     if (List.size(newList) == 0) {
-                        StableTrieMap.delete(memoryStorage.index_mappings, Nat32.equal, nat32IdentityFunction, hashedKey);
+                        StableTrieMap.delete(memoryStorage.keyToKeyInfoAddressMappings, Nat32.equal, nat32IdentityFunction, hashedKey);
                     } else {
-                        StableTrieMap.put(memoryStorage.index_mappings, Nat32.equal, nat32IdentityFunction, hashedKey, newList);
+                        StableTrieMap.put(memoryStorage.keyToKeyInfoAddressMappings, Nat32.equal, nat32IdentityFunction, hashedKey, newList);
                     };
                 };
                 case (_) {
-                    StableTrieMap.delete(memoryStorage.index_mappings, Nat32.equal, nat32IdentityFunction, hashedKey);
+                    StableTrieMap.delete(memoryStorage.keyToKeyInfoAddressMappings, Nat32.equal, nat32IdentityFunction, hashedKey);
                 };
             };
         };
@@ -90,7 +105,7 @@ module {
         // Get keyinfo-memory adresses for a provided key
         public func get_values(hashedKey:Nat32):List.List<Nat64>{
             
-            let memoryAddressesOrNull = StableTrieMap.get(memoryStorage.index_mappings, Nat32.equal, nat32IdentityFunction, hashedKey);
+            let memoryAddressesOrNull = StableTrieMap.get(memoryStorage.keyToKeyInfoAddressMappings, Nat32.equal, nat32IdentityFunction, hashedKey);
             switch (memoryAddressesOrNull) {
                 case (?memoryAddresses) {
                     return memoryAddresses;       

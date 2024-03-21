@@ -11,6 +11,8 @@ import Array "mo:base/Array";
 import Nat32 "mo:base/Nat32";
 import LibKey "../src/modules/libKey";
 import GlobalFunctions "../src/helpers/globalFunctions";
+import StableTrieMap "mo:StableTrieMap";
+import Vector "mo:vector";
 
 import { test; suite } "mo:test";
 
@@ -51,7 +53,7 @@ suite(
 
         );
         test(
-            "Test 'add_entry' function with mutiple values + 'get_key_vals' function",
+            "Test 'add_entry' function with mutiple values + 'get_key_hashes' function",
             func() {
 
                 let libKey = LibKey.libKey(lib.get_new_memory_storage(8));
@@ -70,7 +72,7 @@ suite(
                 assert List.size(result1) == 3;
                 assert List.toArray(List.reverse(result1)) == [1, 2, 3];
 
-                let keys = libKey.get_key_vals();
+                let keys = libKey.get_key_hashes();
                 assert Iter.toArray(keys) == [hashedKey1];
 
             },
@@ -150,7 +152,7 @@ suite(
 
                 assert List.size(result2) == 0;
 
-                let allKeysArray = Iter.toArray(libKey.get_key_vals());
+                let allKeysArray = Iter.toArray(libKey.get_key_hashes());
                 assert allKeysArray == [hashedKey1];
 
                 let vals_for_key1 : List.List<Nat64> = libKey.get_vals_for_key(key1);

@@ -11,13 +11,10 @@ import Nat8 "mo:base/Nat8";
 module{
 
 
-    /// Wrapper type as (linked list node) that holds the actual value-blob and some meta-data
+    /// Wrapper type as (linked list node) that holds the address for the actual value-blob 
+    /// and some meta-data.
+    //  This type 'WrappedBlob' is never instantiated, and instead all the values are written directly into memory.
     public type WrappedBlob = {
-
-        // The size of this instance in bytes.
-        totalSize : Nat64;
-
-        identifier:Nat64;
 
         // Index for next item
         addressOfNextItem : Nat64;
@@ -28,20 +25,23 @@ module{
         // Size of the value-blob in bytes
         internalBlobSize : Nat64;
 
-        // The blob-content to store
-        internalBlob : Blob;
+        // The total allocated size in bytes for the wrapped-blob.
+        // (This can be larger than 'internalBlobSize' if replace-buffer in 'memoryStorageTypes' was set > 0)
+        internalBlobAllocatedSize:Nat64;
+
+        // The internal blob is stored at this address
+        internalBlobAddress : Nat64;
     };
 
     public let Offsets_WrappedBlob = {
       
-        totalSize : Nat64 = 0;
-        identifier:Nat64 = 8;
-        addressOfNextItem : Nat64 = 16;
-        addressOfPreviousItem : Nat64 = 24;
-        internalBlobSize : Nat64 = 32;
-        internalBlob : Nat64 = 40;
+        addressOfNextItem : Nat64 = 0;
+        addressOfPreviousItem : Nat64 = 8;
+        internalBlobSize : Nat64 = 16;
+        internalBlobAllocatedSize:Nat64 = 24;
+        internalBlobAddress : Nat64 = 32;
 
-        minimumBytesNeeded:Nat64 = 48;
+        bytesNeeded:Nat64 = 40; // 5 * 8 bytes
     };
 
 };
