@@ -20,38 +20,39 @@ import { test; suite } "mo:test";
 import Leaf "mo:augmented-btrees/BpTree/Leaf";
 import LibMemoryHashList "../src/modules/libMemoryHashList";
 import Fuzz "mo:fuzz";
+import VectorHelper "Helper/vectorHelper";
 
 let globalBlobHashFunction = GlobalFunctions.blobHash;
 let dummyBlob : Blob = Lib.Blobify.Text.to_blob("dummyBlob");
 let dummyNat32 : Nat32 = 732354;
 
- type OwnType = {
-        myNumber : Nat;
-        myText : Text;
-    };
-    let ownType1 : OwnType = {
-        myNumber : Nat = 2345;
-        myText : Text = "Hello World";
-    };
-    let ownType2 : OwnType = {
-        myNumber : Nat = 79;
-        myText : Text = "";
-    };
-    let ownType3 : OwnType = {
-        myNumber : Nat = 0;
-        myText : Text = "My test text";
-    };
+type OwnType = {
+    myNumber : Nat;
+    myText : Text;
+};
+let ownType1 : OwnType = {
+    myNumber : Nat = 2345;
+    myText : Text = "Hello World";
+};
+let ownType2 : OwnType = {
+    myNumber : Nat = 79;
+    myText : Text = "";
+};
+let ownType3 : OwnType = {
+    myNumber : Nat = 0;
+    myText : Text = "My test text";
+};
 
-    let ownType1Blob : Blob = to_candid (ownType1);
-    let ownType2Blob : Blob = to_candid (ownType2);
-    let ownType3Blob : Blob = to_candid (ownType3);
+let ownType1Blob : Blob = to_candid (ownType1);
+let ownType2Blob : Blob = to_candid (ownType2);
+let ownType3Blob : Blob = to_candid (ownType3);
 
-    func ownType_getDefaultType() : OwnType {
-        let result : OwnType = {
-            myNumber = 0;
-            myText = "";
-        };
+func ownType_getDefaultType() : OwnType {
+    let result : OwnType = {
+        myNumber = 0;
+        myText = "";
     };
+};
 
 suite(
     "LibMemoryHashList Tests",
@@ -63,41 +64,39 @@ suite(
                 let mem = Lib.get_new_memory_storage(8);
                 let hashList = LibMemoryHashList.libMemoryHashList(mem);
 
-                 
                 let key1 : Blob = Lib.Blobify.Text.to_blob("key1");
                 let key2 : Blob = Lib.Blobify.Text.to_blob("key2");
                 let key3 : Blob = Lib.Blobify.Text.to_blob("key3");
 
                 assert hashList.get_last_index(key1) == null;
 
-                assert hashList.add(key1, ownType1Blob) == ?0;
-                assert hashList.add(key1, ownType1Blob) == ?1;
-                assert hashList.add(key1, ownType2Blob) == ?2;
-                assert hashList.add(key1, ownType3Blob) == ?3;
+                assert hashList.add(key1, ownType1Blob).0 == 0;
+                assert hashList.add(key1, ownType1Blob).0 == 1;
+                assert hashList.add(key1, ownType2Blob).0 == 2;
+                assert hashList.add(key1, ownType3Blob).0 == 3;
 
-                assert hashList.add(key2, ownType2Blob) == ?0;
-                assert hashList.add(key2, ownType3Blob) == ?1;
-                assert hashList.add(key2, ownType1Blob) == ?2;
+                assert hashList.add(key2, ownType2Blob).0 == 0;
+                assert hashList.add(key2, ownType3Blob).0 == 1;
+                assert hashList.add(key2, ownType1Blob).0 == 2;
 
                 assert hashList.get_last_index(key1) == ?3;
 
-                assert hashList.get_at_index(key1,0) == ?ownType1Blob;
-                assert hashList.get_at_index(key1,1) == ?ownType1Blob;
-                assert hashList.get_at_index(key1,2) == ?ownType2Blob;
-                assert hashList.get_at_index(key1,3) == ?ownType3Blob;
-                assert hashList.get_at_index(key1,4) == null;
+                assert hashList.get_at_index(key1, 0) == ?ownType1Blob;
+                assert hashList.get_at_index(key1, 1) == ?ownType1Blob;
+                assert hashList.get_at_index(key1, 2) == ?ownType2Blob;
+                assert hashList.get_at_index(key1, 3) == ?ownType3Blob;
+                assert hashList.get_at_index(key1, 4) == null;
 
-                assert hashList.get_at_index(key2,0) == ?ownType2Blob;
-                assert hashList.get_at_index(key2,1) == ?ownType3Blob;
-                assert hashList.get_at_index(key2,2) == ?ownType1Blob;
-                assert hashList.get_at_index(key2,3) == null;
+                assert hashList.get_at_index(key2, 0) == ?ownType2Blob;
+                assert hashList.get_at_index(key2, 1) == ?ownType3Blob;
+                assert hashList.get_at_index(key2, 2) == ?ownType1Blob;
+                assert hashList.get_at_index(key2, 3) == null;
 
-                assert hashList.get_at_index(key3,0) == null;
+                assert hashList.get_at_index(key3, 0) == null;
 
                 assert hashList.get_last_index(key1) == ?3;
                 assert hashList.get_last_index(key2) == ?2;
                 assert hashList.get_last_index(key3) == null;
-
 
             },
 
@@ -109,7 +108,6 @@ suite(
                 let mem = Lib.get_new_memory_storage(8);
                 let hashList = LibMemoryHashList.libMemoryHashList(mem);
 
-                 
                 let key1 : Blob = Lib.Blobify.Text.to_blob("key1");
                 let key2 : Blob = Lib.Blobify.Text.to_blob("key2");
                 let key3 : Blob = Lib.Blobify.Text.to_blob("key3");
@@ -126,11 +124,11 @@ suite(
                 ignore hashList.add(key2, ownType1Blob);
 
                 assert hashList.get_last_index(key1) == ?3;
-                assert hashList.get_at_range(key1, 5,2) == [];    
+                assert hashList.get_at_range(key1, 5, 2) == [];
 
-                assert hashList.get_at_range(key1, 2,5) == [ownType2Blob,ownType3Blob ]; 
-                assert hashList.get_at_range(key1, 1,3) == [ownType1Blob, ownType2Blob,ownType3Blob ];   
-              
+                assert hashList.get_at_range(key1, 2, 5) == [ownType2Blob, ownType3Blob];
+                assert hashList.get_at_range(key1, 1, 3) == [ownType1Blob, ownType2Blob, ownType3Blob];
+
             },
 
         );
@@ -142,7 +140,6 @@ suite(
                 let mem = Lib.get_new_memory_storage(8);
                 let hashList = LibMemoryHashList.libMemoryHashList(mem);
 
-                 
                 let key1 : Blob = Lib.Blobify.Text.to_blob("key1");
                 let key2 : Blob = Lib.Blobify.Text.to_blob("key2");
                 let key3 : Blob = Lib.Blobify.Text.to_blob("key3");
@@ -161,16 +158,16 @@ suite(
 
                 assert hashList.get_all_keys() == [key3, key2, key1];
 
-                ignore hashList.remove_value_at_index(key2,2);
-                ignore hashList.remove_value_at_index(key2,1);
+                ignore hashList.remove_value_at_index(key2, 2);
+                ignore hashList.remove_value_at_index(key2, 1);
 
                 assert hashList.get_all_keys() == [key3, key2, key1];
 
-                ignore hashList.remove_value_at_index(key2,0);
-                assert hashList.remove_value_at_index(key2,0) == #err("Existing value not found for this key at index: 0");
-                 
+                ignore hashList.remove_value_at_index(key2, 0);
+                assert hashList.remove_value_at_index(key2, 0) == #err("Existing value not found for this key at index: 0");
+
                 assert hashList.get_all_keys() == [key3, key1];
-              
+
             },
 
         );
@@ -183,7 +180,7 @@ suite(
                 let hashList = LibMemoryHashList.libMemoryHashList(mem);
 
                 let key1 : Blob = Lib.Blobify.Text.to_blob("key1");
- 
+
                 assert hashList.get_all_keys() == [];
 
                 ignore hashList.add(key1, ownType1Blob);
@@ -194,20 +191,18 @@ suite(
                 ignore hashList.update_value_at_index(key1, 1, ownType3Blob);
                 assert hashList.get_at_index(key1, 1) == ?ownType3Blob;
 
-                assert hashList.get_at_range(key1, 0, 7) 
-                        == [ownType1Blob,ownType3Blob, ownType2Blob, ownType3Blob];
+                assert hashList.get_at_range(key1, 0, 7) == [ownType1Blob, ownType3Blob, ownType2Blob, ownType3Blob];
 
-                assert hashList.update_value_at_index(key1, 12, ownType3Blob) 
-                        == #err("Existing value not found for this key at index 12");
+                assert hashList.update_value_at_index(key1, 12, ownType3Blob) == #err("Existing value not found for this key at index 12");
 
                 ignore hashList.update_value_at_index(key1, 0, ownType3Blob);
-                assert hashList.get_at_index(key1, 0) == ?ownType3Blob;        
+                assert hashList.get_at_index(key1, 0) == ?ownType3Blob;
 
             },
 
         );
 
-         test(
+        test(
             "'remove_value_at_index' Tests",
             func() {
 
@@ -215,7 +210,7 @@ suite(
                 let hashList = LibMemoryHashList.libMemoryHashList(mem);
 
                 let key1 : Blob = Lib.Blobify.Text.to_blob("key1");
-  
+
                 assert hashList.get_all_keys() == [];
 
                 ignore hashList.add(key1, ownType1Blob);
@@ -229,9 +224,8 @@ suite(
                 ignore hashList.remove_value_at_index(key1, 0);
                 assert hashList.get_at_index(key1, 0) == ?ownType2Blob;
                 assert hashList.get_at_index(key1, 1) == ?ownType3Blob;
-                      
-                assert hashList.remove_value_at_index(key1, 12) 
-                         == #err("Existing value not found for this key at index: 12");
+
+                assert hashList.remove_value_at_index(key1, 12) == #err("Existing value not found for this key at index: 12");
             },
 
         );
@@ -244,106 +238,326 @@ suite(
                 let hashList = LibMemoryHashList.libMemoryHashList(mem);
 
                 let key1 : Blob = Lib.Blobify.Text.to_blob("key1");
-  
+
                 assert hashList.get_last_index(key1) == null;
 
                 ignore hashList.add(key1, ownType1Blob);
-                assert hashList.get_last_index(key1) ==  ?0;
+                assert hashList.get_last_index(key1) == ?0;
 
                 ignore hashList.add(key1, ownType1Blob);
-                assert hashList.get_last_index(key1) ==  ?1;
+                assert hashList.get_last_index(key1) == ?1;
 
                 ignore hashList.add(key1, ownType2Blob);
-                assert hashList.get_last_index(key1) ==  ?2;
+                assert hashList.get_last_index(key1) == ?2;
 
                 ignore hashList.add(key1, ownType3Blob);
-                assert hashList.get_last_index(key1) ==  ?3;
+                assert hashList.get_last_index(key1) == ?3;
 
                 let result = hashList.remove_value_at_index(key1, 1);
-                assert hashList.get_last_index(key1) ==  ?2;
+                assert hashList.get_last_index(key1) == ?2;
             },
 
         );
 
-         test(
+        test(
             "Doing many different operations Tests",
             func() {
 
                 let seed = 123456789;
                 var fuzz = Fuzz.fromSeed(seed);
-                // let randomNumber = fuzz.nat.randomRange(23223, 5133231233232343242312352342);
-                // Debug.print("random");
-                // Debug.print(debug_show(randomNumber));
 
-                let mem = Lib.get_new_memory_storage(8);
+                let mem = Lib.get_new_memory_storage(0);
                 let hashList = LibMemoryHashList.libMemoryHashList(mem);
-
+                
                 let key1 : Blob = Lib.Blobify.Text.to_blob("key1");
-  
-                let refResult:Vector.Vector<Blob> = Vector.new();
-                let possibleValues:Vector.Vector<Blob> = Vector.new();
+                let key2 : Blob = Lib.Blobify.Text.to_blob("key2");
+                let key3 : Blob = Lib.Blobify.Text.to_blob("key3");
+
+                let vec1 = VectorHelper.vectorHelper();
+                let vec2 = VectorHelper.vectorHelper();
+                let vec3 = VectorHelper.vectorHelper();
+
+                let possibleValues : Vector.Vector<Blob> = Vector.new();
 
                 // create 255 OwnType-types as blobs with random field values
-                for(index in Iter.range(0,255)){
+                for (index in Iter.range(0, 255)) {
 
                     let dynamicType : OwnType = {
-                            myNumber : Nat = fuzz.nat.randomRange(0, 125554);
-                            myText : Text = fuzz.text.randomAlphabetic(fuzz.nat.randomRange(0, 300));
+                        myNumber : Nat = fuzz.nat.randomRange(0, 125554);
+                        myText : Text = fuzz.text.randomAlphabetic(fuzz.nat.randomRange(0, 20));
                     };
+
+                    Vector.add(possibleValues, to_candid (dynamicType));
                 };
 
                 assert true == true;
 
-                for(index in Iter.range(0,100)){
-                    let randomOperation: Nat = fuzz.nat.randomRange(0, 2);
-                    Debug.print(debug_show(randomOperation));
-                    switch(randomOperation){
-                        case (0){
-                             // get_at_index
+                let isEqual = func checkForEqual(hashList : LibMemoryHashList.libMemoryHashList, vec : VectorHelper.vectorHelper, key : Blob) : Bool {
 
-                             let randomIndex =fuzz.nat.randomRange(0, 5);
-                             let actualResult:?Blob = hashList.get_at_index(key1, randomIndex);
-                             let expectedResult = 
-                             switch(actualResult){
-                                case (?blob){
-
+                    let lastIndexOrNull = hashList.get_last_index(key);
+                    switch (lastIndexOrNull) {
+                        case (?lastIndex) {
+                            for (indexToUse in Iter.range(0, lastIndex)) {
+                                let actualBlob : ?Blob = hashList.get_at_index(key, indexToUse);
+                                let refBlob : ?Blob = vec.get_value(indexToUse);
+                                if (actualBlob != refBlob) {
+                                    return false;
                                 };
-                                case (_){
-
-                                };
-                             }
+                            };
 
                         };
-                        case (_){
-                            // do nothing
+                        case (_) {
+
+                            let lastIndexOrNull : ?Nat = vec.get_last_index();
+                            switch (lastIndexOrNull) {
+                                case (?hasIndex) {
+                                    return false;
+                                };
+                                case (_) {
+                                    return true;
+                                };
+                            };
                         };
+                    };
 
-                    }
-
+                    return true;
 
                 };
 
+                for (index in Iter.range(0, 8000)) {
+                    let randomOperation : Nat = fuzz.nat.randomRange(0, 6);
+                    // Debug.print("Random operation");
+                    // Debug.print(debug_show(randomOperation));
 
+                    let randomKeyNumber = fuzz.nat.randomRange(0, 2);
+                    var randomKey = key1;
+                    var refVector = vec1;
+                    if (randomKeyNumber == 1) {
+                        randomKey := key2;
+                        refVector := vec2;
+                    } else if (randomKeyNumber == 2) {
+                        randomKey := key3;
+                        refVector := vec3;
+                    };
 
-                // assert hashList.get_last_index(key1) == null;
+                    switch (randomOperation) {
+                        case (0) {
+                            // get_at_index
+                            let randomIndex = fuzz.nat.randomRange(0, 20);
+                            let actualResult : ?Blob = hashList.get_at_index(randomKey, randomIndex);
+                            let expectedResult : ?Blob = refVector.get_value(randomIndex);
+                            assert actualResult == expectedResult;
 
-                // ignore hashList.add(key1, ownType1Blob);
-                // assert hashList.get_last_index(key1) ==  ?0;
+                            assert isEqual(hashList, refVector, randomKey) == true;
 
-                // ignore hashList.add(key1, ownType1Blob);
-                // assert hashList.get_last_index(key1) ==  ?1;
+                        };
+                        case (1 or 2 or 3) {
+                            //add
+                            let randomBlob : Blob = Vector.get(possibleValues, fuzz.nat.randomRange(0, 255));
+                            refVector.add(randomBlob);
+                            ignore hashList.add(randomKey, randomBlob);
 
-                // ignore hashList.add(key1, ownType2Blob);
-                // assert hashList.get_last_index(key1) ==  ?2;
+                            assert isEqual(hashList, refVector, randomKey) == true;
+                        };
+                        case (4) {
+                            // update at index
+                            let randomIndex = fuzz.nat.randomRange(0, 20);
+                            let randomBlob : Blob = Vector.get(possibleValues, fuzz.nat.randomRange(0, 255));
+                            refVector.update_at_index(randomIndex, randomBlob);
+                            ignore hashList.update_value_at_index(randomKey, randomIndex, randomBlob);
 
-                // ignore hashList.add(key1, ownType3Blob);
-                // assert hashList.get_last_index(key1) ==  ?3;
+                            assert isEqual(hashList, refVector, randomKey) == true;
+                        };
+                        case (5) {
+                            // remove value at index
+                            let randomIndex = fuzz.nat.randomRange(0, 20);
+                            refVector.remove_at_index(randomIndex);
+                            ignore hashList.remove_value_at_index(randomKey, randomIndex);
 
-                // let result = hashList.remove_value_at_index(key1, 1);
-                // assert hashList.get_last_index(key1) ==  ?2;
+                            assert isEqual(hashList, refVector, randomKey) == true;
+
+                        };
+                        case (6) {
+                            // insert at index
+                            let randomIndex = fuzz.nat.randomRange(0, 20);
+                            let randomBlob : Blob = Vector.get(possibleValues, fuzz.nat.randomRange(0, 255));
+
+                            refVector.insert_at_index(randomIndex, randomBlob);
+                            ignore hashList.insert_at_index(randomKey, randomIndex, randomBlob);
+                            assert isEqual(hashList, refVector, randomKey) == true;
+
+                        };
+                        case (_) {
+                            // do nothing
+                        };
+                    };
+                };
+
+                // Debug.print(debug_show (hashList.get_last_index(key1)));
+                // Debug.print(debug_show (hashList.get_last_index(key2)));
+                // Debug.print(debug_show (hashList.get_last_index(key3)));
+
+                assert isEqual(hashList, vec1, key1) == true;
+                assert isEqual(hashList, vec2, key2) == true;
+                assert isEqual(hashList, vec3, key3) == true;
+
             },
 
         );
-        
+
+
+        test(
+            "Doing many different operations - with forced hash-collisions - Tests",
+            func() {
+
+                let seed = 123456789;
+                var fuzz = Fuzz.fromSeed(seed);
+
+                let mem = Lib.get_new_memory_storage(8);
+                let hashList = LibMemoryHashList.libMemoryHashList(mem);
+                
+                // set own hashing-function for key->hash , so that hash-collisions will be forced
+                hashList.setBlobHashingFunction(
+                    func blobHash(n:Blob):Nat32{
+                            5;
+                        }
+                );
+
+                let key1 : Blob = Lib.Blobify.Text.to_blob("key1");
+                let key2 : Blob = Lib.Blobify.Text.to_blob("key2");
+                let key3 : Blob = Lib.Blobify.Text.to_blob("key3");
+
+                let vec1 = VectorHelper.vectorHelper();
+                let vec2 = VectorHelper.vectorHelper();
+                let vec3 = VectorHelper.vectorHelper();
+
+                let possibleValues : Vector.Vector<Blob> = Vector.new();
+
+                // create 255 OwnType-types as blobs with random field values
+                for (index in Iter.range(0, 255)) {
+
+                    let dynamicType : OwnType = {
+                        myNumber : Nat = fuzz.nat.randomRange(0, 125554);
+                        myText : Text = fuzz.text.randomAlphabetic(fuzz.nat.randomRange(0, 20));
+                    };
+
+                    Vector.add(possibleValues, to_candid (dynamicType));
+                };
+
+                assert true == true;
+
+                let isEqual = func checkForEqual(hashList : LibMemoryHashList.libMemoryHashList, vec : VectorHelper.vectorHelper, key : Blob) : Bool {
+
+                    let lastIndexOrNull = hashList.get_last_index(key);
+                    switch (lastIndexOrNull) {
+                        case (?lastIndex) {
+                            for (indexToUse in Iter.range(0, lastIndex)) {
+                                let actualBlob : ?Blob = hashList.get_at_index(key, indexToUse);
+                                let refBlob : ?Blob = vec.get_value(indexToUse);
+                                if (actualBlob != refBlob) {
+                                    return false;
+                                };
+                            };
+
+                        };
+                        case (_) {
+
+                            let lastIndexOrNull : ?Nat = vec.get_last_index();
+                            switch (lastIndexOrNull) {
+                                case (?hasIndex) {
+                                    return false;
+                                };
+                                case (_) {
+                                    return true;
+                                };
+                            };
+                        };
+                    };
+
+                    return true;
+
+                };
+
+                for (index in Iter.range(0, 8000)) {
+                    let randomOperation : Nat = fuzz.nat.randomRange(0, 6);
+                    // Debug.print("Random operation");
+                    // Debug.print(debug_show(randomOperation));
+
+                    let randomKeyNumber = fuzz.nat.randomRange(0, 2);
+                    var randomKey = key1;
+                    var refVector = vec1;
+                    if (randomKeyNumber == 1) {
+                        randomKey := key2;
+                        refVector := vec2;
+                    } else if (randomKeyNumber == 2) {
+                        randomKey := key3;
+                        refVector := vec3;
+                    };
+
+                    switch (randomOperation) {
+                        case (0) {
+                            // get_at_index
+                            let randomIndex = fuzz.nat.randomRange(0, 20);
+                            let actualResult : ?Blob = hashList.get_at_index(randomKey, randomIndex);
+                            let expectedResult : ?Blob = refVector.get_value(randomIndex);
+                            assert actualResult == expectedResult;
+
+                            assert isEqual(hashList, refVector, randomKey) == true;
+
+                        };
+                        case (1 or 2 or 3) {
+                            //add
+                            let randomBlob : Blob = Vector.get(possibleValues, fuzz.nat.randomRange(0, 255));
+                            refVector.add(randomBlob);
+                            ignore hashList.add(randomKey, randomBlob);
+
+                            assert isEqual(hashList, refVector, randomKey) == true;
+                        };
+                        case (4) {
+                            // update at index
+                            let randomIndex = fuzz.nat.randomRange(0, 20);
+                            let randomBlob : Blob = Vector.get(possibleValues, fuzz.nat.randomRange(0, 255));
+                            refVector.update_at_index(randomIndex, randomBlob);
+                            ignore hashList.update_value_at_index(randomKey, randomIndex, randomBlob);
+
+                            assert isEqual(hashList, refVector, randomKey) == true;
+                        };
+                        case (5) {
+                            // remove value at index
+                            let randomIndex = fuzz.nat.randomRange(0, 20);
+                            refVector.remove_at_index(randomIndex);
+                            ignore hashList.remove_value_at_index(randomKey, randomIndex);
+
+                            assert isEqual(hashList, refVector, randomKey) == true;
+
+                        };
+                        case (6) {
+                            // insert at index
+                            let randomIndex = fuzz.nat.randomRange(0, 20);
+                            let randomBlob : Blob = Vector.get(possibleValues, fuzz.nat.randomRange(0, 255));
+
+                            refVector.insert_at_index(randomIndex, randomBlob);
+                            ignore hashList.insert_at_index(randomKey, randomIndex, randomBlob);
+                            assert isEqual(hashList, refVector, randomKey) == true;
+
+                        };
+                        case (_) {
+                            // do nothing
+                        };
+                    };
+                };
+
+                // Debug.print(debug_show (hashList.get_last_index(key1)));
+                // Debug.print(debug_show (hashList.get_last_index(key2)));
+                // Debug.print(debug_show (hashList.get_last_index(key3)));
+
+                assert isEqual(hashList, vec1, key1) == true;
+                assert isEqual(hashList, vec2, key2) == true;
+                assert isEqual(hashList, vec3, key3) == true;
+
+            },
+
+        );
+
     },
 );

@@ -27,6 +27,11 @@ module {
         private let offset = CommonTypes.Offsets_KeyInfo;
    
 
+        public func setBlobHashingFunction(blobHash : Blob -> Nat32) {
+            blobHashFunction := blobHash;
+            libKey.setBlobHashingFunction(blobHash);
+        };
+
         public func get_related_outer_vector_index(keyinfoAddress:Nat64):Nat64{
             Region.loadNat64(memoryStorage.memory_region.region, keyinfoAddress + offset.vectorIndex);
         };

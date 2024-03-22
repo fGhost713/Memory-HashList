@@ -35,10 +35,12 @@ module {
         // blob-to-hash function. With this we can forcefully simulate hash collisions in the tests later.
         public func setBlobHashingFunction(blobHash : Blob -> Nat32) {
             blobHashFunction := blobHash;
+            libKey.setBlobHashingFunction(blobHash);
+            libKeyInfo.setBlobHashingFunction(blobHash);
         };
 
         // adding new value for specified key (if key is not existing it is created)
-        public func add(key : Blob, value : Blob):?Nat{
+        public func add(key : Blob, value : Blob):(Nat /*index*/, Nat64 /* wrapped-blob address*/){
             let hashedKey : Nat32 = blobHashFunction(key);
 
             let keyInfoAddressResult = libKeyInfo.get_keyinfo_address(key);
@@ -63,8 +65,8 @@ module {
                 // Push libKeyInfo-Address as value for the specified key
                 libKey.add_entry(hashedKey, newKeyInfoAddress);
 
-                // return the index for the added value
-                libIndex.get_last_index(outerVectorIndex);
+                // return the index for the added value and the new wrapped-blob memory address
+                (Option.get(libIndex.get_last_index(outerVectorIndex),0),wrappedBlobMemoryAddress);
              
             } else {
 
@@ -88,8 +90,8 @@ module {
                         // add wrapped-blob address vector
                         libIndex.append_wrapped_blob_memory_address(outer_vector_index_Nat, wrappedBlobMemoryAddress);
                        
-                        // return the index for the added value
-                        libIndex.get_last_index(outer_vector_index_Nat);
+                        // return the index for the added value and the new wrapped-blob memory address
+                        (Option.get(libIndex.get_last_index(outer_vector_index_Nat),0),wrappedBlobMemoryAddress);
                         
                     };
                     case (_) {
@@ -107,8 +109,8 @@ module {
                         // set the outer-vector-index in related keyinfo
                         libKeyInfo.set_related_outer_vector_index(keyInfoAddress, Nat64.fromNat(outerVectorIndex));
 
-                        // return the index for the added value
-                        libIndex.get_last_index(outerVectorIndex);
+                        // return the index for the added value and the new wrapped-blob memory address
+                        (Option.get(libIndex.get_last_index(outerVectorIndex),0),wrappedBlobMemoryAddress);
                     };
 
                 };
@@ -131,6 +133,39 @@ module {
                 };
                 case (_){
                     #err("Existing value not found for this key at index " #debug_show(index));
+                };
+            }
+        };
+
+        public func insert_at_index(key:Blob, index:Nat, newBlob:Blob):Result.Result<Nat64,Text>{
+
+
+            let keyInfoAddressResult = libKeyInfo.get_keyinfo_address(key);
+            let keyInfoWasFound = keyInfoAddressResult.0;
+            let keyInfoAddress = keyInfoAddressResult.1;
+            if (index == 0 and keyInfoWasFound == false){
+                let result = add(key, newBlob);
+                return #ok(result.1);
+            };
+
+            if (keyInfoWasFound == false) {
+                return #err("Index not found.");
+            };
+
+            let outer_vector_index = libKeyInfo.get_related_outer_vector_index(keyInfoAddress);
+            let wrappedBlobAddressOrNull = libIndex.get_wrapped_blob_Address(
+                Nat64.toNat(outer_vector_index),
+                index,
+            );
+
+            switch(wrappedBlobAddressOrNull){
+                case (?foundWrappedBlobAddress){
+                    let insertBlobResult = libWrappedBlob.insert_inner_blob(foundWrappedBlobAddress,newBlob);
+                    libIndex.insert_at_index(Nat64.toNat(outer_vector_index), index,insertBlobResult.1);
+                    return #ok(insertBlobResult.1);
+                };
+                case (_){
+                    return #err("Index not found.");
                 };
             }
         };

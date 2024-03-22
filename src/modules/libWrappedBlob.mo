@@ -128,6 +128,37 @@ module {
 
         };
 
+        // insert wrapped-blob before 'nextWrappedBlobAddress'
+        // -> returns first tuple as true when the inserted blob is now the new first element, 
+        //    and otherwise false is returned.
+        //    The second tuple is the new wrappedBlob-memory address
+        public func insert_inner_blob(nextWrappedBlobAddress:Nat64, newBlobToStore:Blob):(Bool, Nat64){
+
+             let previousItemResult = get_previous_wrapped_blob_address(nextWrappedBlobAddress);
+             var previousWrappedBlobAddress:?Nat64 = null;
+             if (previousItemResult.0 == true){
+                previousWrappedBlobAddress:= Option.make(previousItemResult.1);
+             };
+
+             // create new wrappedBlob
+             let insertedWrappedBlobAddress:Nat64 = create_new(
+                newBlobToStore,previousWrappedBlobAddress, 
+                Option.make(nextWrappedBlobAddress)
+            );
+
+            if (previousItemResult.0 == true){
+                update_next_wrapped_blob_address_value(previousItemResult.1, insertedWrappedBlobAddress);
+             };
+
+             update_previous_wrapped_blob_address_value(nextWrappedBlobAddress,insertedWrappedBlobAddress);
+
+             if (previousItemResult.0 == true){
+                return (false, insertedWrappedBlobAddress);
+             };
+
+             return (true, insertedWrappedBlobAddress);
+        };
+
         public func update_inner_blob(wrappedBlobAddress:Nat64, newBlobToStore:Blob){
 
             let newBlobSize:Nat = newBlobToStore.size();

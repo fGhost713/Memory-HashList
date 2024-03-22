@@ -23,9 +23,7 @@ module {
     public class libIndex(memoryStorageToUse : MemoryStorage) {
 
         private let memoryStorage : MemoryStorage = memoryStorageToUse;
-        private var blobHashFunction = GlobalFunctions.blobHash;
-        private var nat32IdentityFunction = GlobalFunctions.nat32Identity;
-
+      
         public func is_free_vector_available() : Bool {
             Vector.size(memoryStorage.indizesPerKey_free) > 0;
         };
