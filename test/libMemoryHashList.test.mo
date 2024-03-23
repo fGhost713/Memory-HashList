@@ -229,7 +229,7 @@ suite(
          test(
             "'remove_at_range' Tests",
             func() {
-
+ 
                 let mem = Lib.get_new_memory_storage(8);
                 let hashList = LibMemoryHashList.libMemoryHashList(mem);
 
@@ -253,7 +253,27 @@ suite(
                 assert hashList.get_at_index(key1, 2) == ?ownType3Blob;
                 assert hashList.get_at_index(key1, 3) == null;
              
+
                 assert hashList.remove_at_range(key1, 12, ?22) == #err("Existing value not found for this key at index: 12");
+            
+                ignore hashList.add(key1, ownType1Blob);
+                ignore hashList.add(key1, ownType1Blob);
+                ignore hashList.add(key1, ownType2Blob);
+                ignore hashList.add(key1, ownType3Blob);
+                ignore hashList.add(key1, ownType2Blob);
+                ignore hashList.add(key1, ownType2Blob);
+                ignore hashList.add(key1, ownType3Blob);
+                ignore hashList.add(key1, ownType2Blob);
+                ignore hashList.add(key1, ownType3Blob);
+                ignore hashList.add(key1, ownType2Blob);
+                ignore hashList.add(key1, ownType3Blob);
+                ignore hashList.remove_at_range(key1, 6, null);
+
+                ignore hashList.remove_at_range(key1, 12, ?1);
+
+                ignore hashList.remove_at_range(key1, 4, ?2);
+
+            
             },
 
         );
@@ -291,6 +311,7 @@ suite(
          test(
             "'insert_many_at_index' Tests",
             func() {
+
 
                 let mem = Lib.get_new_memory_storage(8);
                 let hashList = LibMemoryHashList.libMemoryHashList(mem);
@@ -360,6 +381,7 @@ suite(
             "'remove_key' Tests",
             func() {
 
+
                 let mem = Lib.get_new_memory_storage(8);
                 let hashList = LibMemoryHashList.libMemoryHashList(mem);
 
@@ -388,6 +410,7 @@ suite(
         test(
             "'remove_key' - with using collisions - Tests",
             func() {
+
 
                 let mem = Lib.get_new_memory_storage(8);
                 let hashList = LibMemoryHashList.libMemoryHashList(mem);
@@ -472,8 +495,8 @@ suite(
         test(
             "doing many different operations Tests",
             func() {
-
-               
+ 
+        
                 let seed = 123456789;
                 var fuzz = Fuzz.fromSeed(seed);
 
@@ -517,8 +540,8 @@ suite(
                         };
                         case (_) {
 
-                            let lastIndexOrNull : ?Nat = vec.get_last_index();
-                            switch (lastIndexOrNull) {
+                            let vectorIndexOrNull : ?Nat = vec.get_last_index();
+                            switch (vectorIndexOrNull) {
                                 case (?hasIndex) {
                                     return false;
                                 };
@@ -533,11 +556,9 @@ suite(
 
                 };
 
-                for (index in Iter.range(0, 8000)) {
+                for (index in Iter.range(0, 12000)) {
                     let randomOperation : Nat = fuzz.nat.randomRange(0, 7);
-                    // Debug.print("Random operation");
-                    // Debug.print(debug_show(randomOperation));
-
+                   
                     let randomKeyNumber = fuzz.nat.randomRange(0, 2);
                     var randomKey = key1;
                     var refVector = vec1;
@@ -550,72 +571,74 @@ suite(
                     };
 
                     switch (randomOperation) {
-                        // case (0) {
-                        //     // get_at_index
-                        //     let randomIndex = fuzz.nat.randomRange(0, 20);
-                        //     let actualResult : ?Blob = hashList.get_at_index(randomKey, randomIndex);
-                        //     let expectedResult : ?Blob = refVector.get_value(randomIndex);
-                        //     assert actualResult == expectedResult;
+                        case (0) {
+                            // get_at_index
+                            let randomIndex = fuzz.nat.randomRange(0, 20);
+                            let actualResult : ?Blob = hashList.get_at_index(randomKey, randomIndex);
+                            let expectedResult : ?Blob = refVector.get_value(randomIndex);
+                            assert actualResult == expectedResult;
 
-                        //     assert isEqual(hashList, refVector, randomKey) == true;
+                            assert isEqual(hashList, refVector, randomKey) == true;
 
-                        // };
+                        };
+                       
                         case (1 or 2 or 3) {
                             //add
-                            Debug.print("-- add start ----");
-                            let randomBlob : Blob = Vector.get(possibleValues, fuzz.nat.randomRange(0, 255));
-                            Debug.print("-- add start 1 ----");
-                            refVector.add(randomBlob);
-                            Debug.print("-- add start 2 ----");
-                            ignore hashList.add(randomKey, randomBlob);
-                            Debug.print("-- add start 3 ----");
-                            assert isEqual(hashList, refVector, randomKey) == true;
-                            Debug.print("-- add end ----");
-                        };
-                        // case (4) {
-                        //     // update at index
-                        //     let randomIndex = fuzz.nat.randomRange(0, 20);
-                        //     let randomBlob : Blob = Vector.get(possibleValues, fuzz.nat.randomRange(0, 255));
-                        //     refVector.update_at_index(randomIndex, randomBlob);
-                        //     ignore hashList.update_at_index(randomKey, randomIndex, randomBlob);
-
-                        //     assert isEqual(hashList, refVector, randomKey) == true;
-                        // };
-                        // case (5) {
+                           
+                            let randNumber = fuzz.nat.randomRange(0, 255);
                             
-                        //     // remove value at index
-                        //     let randomIndex = fuzz.nat.randomRange(0, 20);
-                        //     refVector.remove_at_index(randomIndex);
-                        //     ignore hashList.remove_at_index(randomKey, randomIndex);
+                            let randomBlob : Blob = Vector.get(possibleValues, randNumber);
+                            
+                            refVector.add(randomBlob);
+                           
+                            ignore hashList.add(randomKey, randomBlob);
+                            
+                            assert isEqual(hashList, refVector, randomKey) == true;
+                           
+                        };
+                        case (4) {
+                            // update at index
+                            let randomIndex = fuzz.nat.randomRange(0, 20);
+                            let randomBlob : Blob = Vector.get(possibleValues, fuzz.nat.randomRange(0, 255));
+                            refVector.update_at_index(randomIndex, randomBlob);
+                            ignore hashList.update_at_index(randomKey, randomIndex, randomBlob);
 
-                        //     assert isEqual(hashList, refVector, randomKey) == true;
+                            assert isEqual(hashList, refVector, randomKey) == true;
+                        };
+                        case (5) {
+                            
+                            // remove value at index
+                            let randomIndex = fuzz.nat.randomRange(0, 20);
+                            refVector.remove_at_index(randomIndex);
+                            ignore hashList.remove_at_index(randomKey, randomIndex);
 
-                        // };
+                            assert isEqual(hashList, refVector, randomKey) == true;
+
+                        };
                          case (6) {
                             
                             // remove at range 
                                                         
-                            let randomIndex = fuzz.nat.randomRange(0, 5);
-                            let randomEndIndex = fuzz.nat.randomRange(0, 5);
-
-                            Debug.print(debug_show(randomIndex) # "," # debug_show(randomEndIndex));
+                            let randomIndex = fuzz.nat.randomRange(0, 14);
+                            let randomEndIndex = fuzz.nat.randomRange(0, 14);
+                           
                             refVector.remove_at_range(randomIndex, randomEndIndex);
-                            Debug.print("-1-");
+                          
                             ignore hashList.remove_at_range(randomKey, randomIndex, Option.make(randomEndIndex));
- Debug.print("-2-");
+
                             assert isEqual(hashList, refVector, randomKey) == true;
- Debug.print("-3-");
+
                         };
-                        // case (7) {
-                        //     // insert at index
-                        //     let randomIndex = fuzz.nat.randomRange(0, 20);
-                        //     let randomBlob : Blob = Vector.get(possibleValues, fuzz.nat.randomRange(0, 255));
+                        case (7) {
+                            // insert at index
+                            let randomIndex = fuzz.nat.randomRange(0, 20);
+                            let randomBlob : Blob = Vector.get(possibleValues, fuzz.nat.randomRange(0, 255));
 
-                        //     refVector.insert_at_index(randomIndex, randomBlob);
-                        //     ignore hashList.insert_at_index(randomKey, randomIndex, randomBlob);
-                        //     assert isEqual(hashList, refVector, randomKey) == true;
+                            refVector.insert_at_index(randomIndex, randomBlob);
+                            ignore hashList.insert_at_index(randomKey, randomIndex, randomBlob);
+                            assert isEqual(hashList, refVector, randomKey) == true;
 
-                        // };
+                        };
                         case (_) {
                             // do nothing
                         };
@@ -626,9 +649,9 @@ suite(
                 // Debug.print(debug_show (hashList.get_last_index(key2)));
                 // Debug.print(debug_show (hashList.get_last_index(key3)));
 
-                // assert isEqual(hashList, vec1, key1) == true;
-                // assert isEqual(hashList, vec2, key2) == true;
-                // assert isEqual(hashList, vec3, key3) == true;
+                assert isEqual(hashList, vec1, key1) == true;
+                assert isEqual(hashList, vec2, key2) == true;
+                assert isEqual(hashList, vec3, key3) == true;
 
             },
 
@@ -638,7 +661,7 @@ suite(
             "doing many different operations - with forced hash-collisions - Tests",
             func() {
 
-                return;
+return;
 
                 let seed = 123456789;
                 var fuzz = Fuzz.fromSeed(seed);
@@ -706,8 +729,8 @@ suite(
 
                 };
 
-                for (index in Iter.range(0, 8000)) {
-                    let randomOperation : Nat = fuzz.nat.randomRange(0, 6);
+                for (index in Iter.range(0, 12000)) {
+                    let randomOperation : Nat = fuzz.nat.randomRange(0, 7);
                     // Debug.print("Random operation");
                     // Debug.print(debug_show(randomOperation));
 
@@ -760,6 +783,20 @@ suite(
 
                         };
                         case (6) {
+                            
+                            // remove at range 
+                                                        
+                            let randomIndex = fuzz.nat.randomRange(0, 14);
+                            let randomEndIndex = fuzz.nat.randomRange(0, 14);
+                           
+                            refVector.remove_at_range(randomIndex, randomEndIndex);
+                          
+                            ignore hashList.remove_at_range(randomKey, randomIndex, Option.make(randomEndIndex));
+
+                            assert isEqual(hashList, refVector, randomKey) == true;
+
+                        };
+                         case (7) {
                             // insert at index
                             let randomIndex = fuzz.nat.randomRange(0, 20);
                             let randomBlob : Blob = Vector.get(possibleValues, fuzz.nat.randomRange(0, 255));

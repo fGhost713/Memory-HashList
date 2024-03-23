@@ -58,7 +58,7 @@ module {
             switch (innerVectorOrNull) {
                 case (?innerVector) {
                     let vectorSize = Vector.size(innerVector);
-                    if (vectorSize == 0 or lastIndex < startIndex) {
+                    if (vectorSize == 0 or lastIndex < startIndex or startIndex >= vectorSize) {
                         return;
                     };
 
@@ -66,12 +66,14 @@ module {
                    
                     if (vectorSize > startIndex) {
                         let numbersToRemove:Nat = (lastIndexToUse - startIndex) + 1;
+                        
 
                         if (vectorSize == 1 and startIndex == 0) {
                             ignore Vector.removeLast(innerVector);
                             return;
                         };
 
+        
                         for (index in Iter.range(startIndex + numbersToRemove, vectorSize -1)) {
                             let vecVal : Nat64 = Vector.get(innerVector, index);
                             let prevIndex : Nat = index - numbersToRemove;
@@ -80,9 +82,13 @@ module {
                         for (index in Iter.range(1, numbersToRemove)){
                             ignore Vector.removeLast(innerVector);
                         };
+
+                    } else {
+                   
                     };
                 };
                 case (_) {
+
                     return;
                 };
             };
@@ -104,7 +110,7 @@ module {
                     };
 
                     if (vectorSize > innerIndex) {
-                        if (vectorSize == 1 or innerIndex == vectorSize + 1) {
+                        if (vectorSize == 1) {
                             ignore Vector.removeLast(innerVector);
                             return;
                         };

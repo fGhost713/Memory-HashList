@@ -2,6 +2,7 @@ import Blob "mo:base/Blob";
 import Nat64 "mo:base/Nat64";
 import Region "mo:base/Region";
 import Option "mo:base/Option";
+import Debug "mo:base/Debug";
 import CommonTypes "../types/commonTypes";
 import MemoryStorageTypes "../types/memoryStorage/memoryStorageTypes";
 import GlobalFunctions "../helpers/globalFunctions";
@@ -114,8 +115,7 @@ module {
 
         // Ihe wrapped-blob and all next wrapped-blobs until 'lastWrappedBlobAddress' will be removed.
         // In case 'lastWrappedBlobAddress' is null (or not found as a  next element), then all next items will be removed.
-        public func delete_wrapped_blobs(firstWrappedBlobAddress : Nat64, lastWrappedBlobAddress : ?Nat64)
-        :(Bool /*first wrapped-blob address changed*/, Nat64  ) {
+        public func delete_wrapped_blobs(firstWrappedBlobAddress : Nat64, lastWrappedBlobAddress : ?Nat64) : (Bool /*first wrapped-blob address changed*/, Nat64) {
 
             var currentAddress : Nat64 = firstWrappedBlobAddress;
             var completed : Bool = false;
@@ -133,11 +133,13 @@ module {
                 };
             };
 
-            let previousAddressResult: (Bool, Nat64) = get_previous_wrapped_blob_address(currentAddress);
-            var nextAddressResult:(Bool, Nat64) = (false, 0);
+            let previousAddressResult : (Bool, Nat64) = get_previous_wrapped_blob_address(currentAddress);
+            var nextAddressResult : (Bool, Nat64) = (false, 0);
+            var deleteCounter = 0;
             while (completed == false) {
 
-                 nextAddressResult := get_next_wrapped_blob_address(currentAddress);
+                nextAddressResult := get_next_wrapped_blob_address(currentAddress);
+     
 
                 let allocatedInnerBlobSize = get_internal_blob_allocated_size_from_address(currentAddress);
                 let innerBlobAddress = get_memory_address_of_internal_blob(currentAddress);
@@ -148,32 +150,29 @@ module {
                 // deallocate wrapped-blob
                 GlobalFunctions.deallocate(memoryStorage, currentAddress, offsets.bytesNeeded);
 
-                if (nextAddressResult.0 == true) {
-
-                    if (endWasDefined == false) {
-                        currentAddress := nextAddressResult.1;
-                    } else {
-                        if (nextAddressResult.1 == endAddress) {
-                            completed := true;
-                        } else {
-                            currentAddress := nextAddressResult.1;
-                        };
-                    };
-                } else {
+                if (currentAddress == endAddress) {
                     completed := true;
+                } else
+          
+                if (nextAddressResult.0 == false) {
+
+                    completed := true;
+                } else {
+                    currentAddress:=nextAddressResult.1;
                 };
+            
+                deleteCounter := deleteCounter + 1;
             };
 
+            if (previousAddressResult.0 == true) {
 
-            if (previousAddressResult.0 == true){
-
-                if (nextAddressResult.0 == true){
+                if (nextAddressResult.0 == true) {
                     update_next_wrapped_blob_address_value(previousAddressResult.1, nextAddressResult.1);
                     update_previous_wrapped_blob_address_value(nextAddressResult.1, previousAddressResult.1);
                 } else {
                     update_next_wrapped_blob_address_value(previousAddressResult.1, previousAddressResult.1);
                 };
-            } else if (nextAddressResult.0 == true){
+            } else if (nextAddressResult.0 == true) {
                 update_previous_wrapped_blob_address_value(nextAddressResult.1, nextAddressResult.1);
                 return (true, nextAddressResult.1);
             };

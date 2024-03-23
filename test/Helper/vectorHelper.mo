@@ -33,13 +33,13 @@ module {
 
         public func remove_at_range(startIndex : Nat, lastIndex : Nat) {
 
-            for(bla in Iter.range(startIndex, lastIndex)){
-                remove_at_index(startIndex);
-            };
+            // for(bla in Iter.range(startIndex, lastIndex)){
+            //     remove_at_index(startIndex);
+            // };
 
-            return;
+            // return;
             let vectorSize = Vector.size(innerVector);
-            if (vectorSize == 0 or lastIndex < startIndex) {
+            if (vectorSize == 0 or lastIndex < startIndex or startIndex >= vectorSize) {
                 return;
             };
 
