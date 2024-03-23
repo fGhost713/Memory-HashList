@@ -123,8 +123,6 @@ module {
                     };
                 };
 
-                let what:Blob = Lib.Blobify.Text.to_blob("key1_");
-
                 let key:Blob = switch (n) {
                     case (1) { Lib.Blobify.Text.to_blob("key1_"#rowNumberText); };
                     case (10) { Lib.Blobify.Text.to_blob("key2_"#rowNumberText); };

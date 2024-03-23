@@ -12,7 +12,7 @@ module {
         memory_region : MemoryRegion.MemoryRegion;
 
         // first allocated memory position
-        var memory_used_firstAddress : Nat64;
+        var memory_used_firstAddress : ?Nat64;
 
         // last allocated memory position
         var memory_used_lastAddress : Nat64;

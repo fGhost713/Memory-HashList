@@ -11,6 +11,7 @@ import Option "mo:base/Option";
 import Debug "mo:base/Debug";
 import Nat "mo:base/Nat";
 import Result "mo:base/Result";
+import Array "mo:base/Array";
 import { MemoryRegion } "mo:memory-region";
 import GlobalFunctions "../../src/helpers/globalFunctions";
 import CommonTypes "../../src/types/commonTypes";
@@ -28,6 +29,39 @@ module {
 
         public func add(item : Blob) {
             Vector.add<Blob>(innerVector, item);
+        };
+
+        public func remove_at_range(startIndex : Nat, lastIndex : Nat) {
+
+            for(bla in Iter.range(startIndex, lastIndex)){
+                remove_at_index(startIndex);
+            };
+
+            return;
+            let vectorSize = Vector.size(innerVector);
+            if (vectorSize == 0 or lastIndex < startIndex) {
+                return;
+            };
+
+            let lastIndexToUse = Nat.min(lastIndex, vectorSize -1);
+
+            if (vectorSize > startIndex) {
+                let numbersToRemove : Nat = (lastIndexToUse - startIndex) + 1;
+
+                if (vectorSize == 1 and startIndex == 0) {
+                    ignore Vector.removeLast(innerVector);
+                    return;
+                };
+
+                for (index in Iter.range(startIndex + numbersToRemove, vectorSize -1)) {
+                    let vecVal : Blob = Vector.get(innerVector, index);
+                    let prevIndex : Nat = index - numbersToRemove;
+                    Vector.put(innerVector, prevIndex, vecVal);
+                };
+                for (index in Iter.range(1, numbersToRemove)) {
+                    ignore Vector.removeLast(innerVector);
+                };
+            };
         };
 
         // The performance is slow. (O(n))
@@ -67,11 +101,69 @@ module {
             ignore Vector.removeLast<Blob>(innerVector);
         };
 
-        public func update_at_index(index:Nat, item:Blob){
+        public func update_at_index(index : Nat, item : Blob) {
             let vectorSize = Vector.size(innerVector);
             if (vectorSize > index) {
-                 Vector.put<Blob>(innerVector, index,item);
+                Vector.put<Blob>(innerVector, index, item);
             };
+        };
+
+        public func insert_many_at_index(innerIndex : Nat, values : [Blob]) {
+            if (Array.size(values) == 0) {
+                return;
+            };
+
+            let vectorSize = Vector.size(innerVector);
+
+            if (vectorSize == 0) {
+                if (innerIndex == 0) {
+                    for (address : Blob in Iter.fromArray(values)) {
+                        Vector.add<Blob>(innerVector, address);
+                    };
+                };
+                return;
+            };
+
+            if (vectorSize == 1) {
+                if (innerIndex == 0) {
+                    let tempValue = Vector.get(innerVector, 0);
+                    Vector.clear<Blob>(innerVector);
+
+                    for (address : Blob in Iter.fromArray(values)) {
+                        Vector.add<Blob>(innerVector, address);
+                    };
+                    Vector.add(innerVector, tempValue);
+                };
+                return;
+            };
+
+            if (vectorSize > innerIndex) {
+
+                // add dummy elements (will be overwritten later)
+                for (address : Blob in Iter.fromArray(values)) {
+                    Vector.add<Blob>(innerVector, address);
+                };
+
+                // number of items to insert
+                let countNewItems : Nat = Array.size(values);
+
+                let vecLength = Vector.size(innerVector);
+
+                // set currIndex to last index
+                var currIndex : Nat = vecLength - countNewItems;
+
+                for (index in Iter.range(innerIndex, vectorSize - 1)) {
+                    currIndex := currIndex - 1;
+                    Vector.put(innerVector, currIndex + countNewItems, Vector.get(innerVector, currIndex));
+                };
+
+                currIndex := innerIndex;
+                for (address : Blob in Iter.fromArray(values)) {
+                    Vector.put<Blob>(innerVector, currIndex, address);
+                    currIndex := currIndex + 1;
+                };
+            };
+
         };
 
         // The performance is slow. (O(n))

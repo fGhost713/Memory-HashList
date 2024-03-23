@@ -1,5 +1,8 @@
 import Iter "mo:base/Iter";
 import Option "mo:base/Option";
+import Array "mo:base/Array";
+import Debug "mo:base/Debug";
+import Nat "mo:base/Nat";
 import GlobalFunctions "../helpers/globalFunctions";
 import CommonTypes "../types/commonTypes";
 import Vector "mo:vector";
@@ -49,8 +52,48 @@ module {
             Vector.add<Nat64>(innerVector, wrappedBlobAddress);
         };
 
+        public func remove_at_range(outerIndex : Nat, startIndex : Nat, lastIndex:Nat){
+            
+            let innerVectorOrNull = get_inner_vector(outerIndex);
+            switch (innerVectorOrNull) {
+                case (?innerVector) {
+                    let vectorSize = Vector.size(innerVector);
+                    if (vectorSize == 0 or lastIndex < startIndex) {
+                        return;
+                    };
+
+                    let lastIndexToUse = Nat.min(lastIndex, vectorSize-1);
+                   
+                    if (vectorSize > startIndex) {
+                        let numbersToRemove:Nat = (lastIndexToUse - startIndex) + 1;
+
+                        if (vectorSize == 1 and startIndex == 0) {
+                            ignore Vector.removeLast(innerVector);
+                            return;
+                        };
+
+                        for (index in Iter.range(startIndex + numbersToRemove, vectorSize -1)) {
+                            let vecVal : Nat64 = Vector.get(innerVector, index);
+                            let prevIndex : Nat = index - numbersToRemove;
+                            Vector.put(innerVector, prevIndex, vecVal);
+                        };
+                        for (index in Iter.range(1, numbersToRemove)){
+                            ignore Vector.removeLast(innerVector);
+                        };
+                    };
+                };
+                case (_) {
+                    return;
+                };
+            };
+
+
+        };
+
         // The performance is slow. (O(n))
         public func remove_at_index(outerIndex : Nat, innerIndex : Nat) {
+
+            //return remove_many_at_range(outerIndex, innerIndex, innerIndex);
 
             let innerVectorOrNull = get_inner_vector(outerIndex);
             switch (innerVectorOrNull) {
@@ -104,10 +147,78 @@ module {
 
         };
 
-        // The performance is slow. (O(n))
-        public func insert_at_index(outerIndex : Nat, innerIndex : Nat, wrappedBlobAddress : Nat64) {
+        public func insert_many_at_index(outerIndex : Nat, innerIndex : Nat, wrappedBlobAddresses : [Nat64]) {
+            if (Array.size(wrappedBlobAddresses) == 0) {
+                return;
+            };
 
             let innerVectorOrNull = get_inner_vector(outerIndex);
+            switch (innerVectorOrNull) {
+                case (?innerVector) {
+                    let vectorSize = Vector.size(innerVector);
+
+                    if (vectorSize == 0) {
+                        if (innerIndex == 0) {
+                            for (address : Nat64 in Iter.fromArray(wrappedBlobAddresses)) {
+                                Vector.add<Nat64>(innerVector, address);
+                            };
+                        };
+                        return;
+                    };
+
+                    if (vectorSize == 1) {
+                        if (innerIndex == 0) {
+                            let tempValue = Vector.get(innerVector, 0);
+                            Vector.clear<Nat64>(innerVector);
+
+                            for (address : Nat64 in Iter.fromArray(wrappedBlobAddresses)) {
+                                Vector.add<Nat64>(innerVector, address);
+                            };
+                            Vector.add(innerVector, tempValue);
+                        };
+                        return;
+                    };
+
+                    if (vectorSize > innerIndex) {
+
+                        // add dummy elements (will be overwritten later)
+                        for (address : Nat64 in Iter.fromArray(wrappedBlobAddresses)) {
+                            Vector.add<Nat64>(innerVector, 0);
+                        };
+
+                        // number of items to insert
+                        let countNewItems : Nat = Array.size(wrappedBlobAddresses);
+
+                        let vecLength = Vector.size(innerVector);
+
+                        // set currIndex to last index
+                        var currIndex : Nat = vecLength - countNewItems;
+
+                        for (index in Iter.range(innerIndex, vectorSize - 1)) {
+                            currIndex := currIndex - 1;
+                            Vector.put(innerVector, currIndex + countNewItems, Vector.get(innerVector, currIndex));
+                        };
+
+                        currIndex := innerIndex;
+                        for (address : Nat64 in Iter.fromArray(wrappedBlobAddresses)) {
+                            Vector.put<Nat64>(innerVector, currIndex, address);
+                            currIndex := currIndex + 1;
+                        };
+                    };
+
+                };
+                case (_) {
+                    return;
+                };
+            };
+
+        };
+
+        // The performance is slow. (O(n))
+        public func insert_at_index(outerIndex : Nat, innerIndex : Nat, wrappedBlobAddress : Nat64) {
+            return insert_many_at_index(outerIndex, innerIndex, [wrappedBlobAddress]);
+
+             let innerVectorOrNull = get_inner_vector(outerIndex);
             switch (innerVectorOrNull) {
                 case (?innerVector) {
                     let vectorSize = Vector.size(innerVector);

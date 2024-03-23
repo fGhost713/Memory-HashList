@@ -1,5 +1,7 @@
 import Blob "mo:base/Blob";
 import Nat64 "mo:base/Nat64";
+import Debug "mo:base/Debug";
+import Option "mo:base/Option";
 import CommonTypes "../types/commonTypes";
 import { MemoryRegion } "mo:memory-region";
 
@@ -18,20 +20,29 @@ module {
     public func deallocate(mem : CommonTypes.MemoryStorage, address : Nat64, size : Nat64) {
 
         let end : Nat64 = address + size;
-        if (address >= mem.memory_used_firstAddress) {
-            if (end <= mem.memory_used_lastAddress) {
+        switch(mem.memory_used_firstAddress){
+            case (?memUsedFirstAddress){
+                if (address >= memUsedFirstAddress) {
+                    if (end <= mem.memory_used_lastAddress) {
 
-                MemoryRegion.deallocate(mem.memory_region, Nat64.toNat(address), Nat64.toNat(size));
+                        MemoryRegion.deallocate(mem.memory_region, Nat64.toNat(address), Nat64.toNat(size));
 
-                if (address == mem.memory_used_firstAddress) {
-                    mem.memory_used_firstAddress := mem.memory_used_firstAddress + size;
+                        if (address == memUsedFirstAddress) {
+                            mem.memory_used_firstAddress := Option.make(memUsedFirstAddress + size);
+                        };
+
+                        if (mem.memory_used_lastAddress == end) {
+                            mem.memory_used_lastAddress := mem.memory_used_lastAddress - size;
+                        };
+                    };
                 };
 
-                if (mem.memory_used_lastAddress == end) {
-                    mem.memory_used_lastAddress := mem.memory_used_lastAddress - size;
-                };
+            };
+            case (_){
+                
             };
         };
+        
     };
 
     // Allocate memory and updates the memory-bound variables
@@ -41,9 +52,17 @@ module {
         let allocatedAddressNat64 : Nat64 = Nat64.fromNat(allocatedAddress);
         let end : Nat64 = allocatedAddressNat64 + size;
 
-        if (mem.memory_used_firstAddress > allocatedAddressNat64) {
-            mem.memory_used_firstAddress := allocatedAddressNat64;
-        };
+         switch(mem.memory_used_firstAddress){
+            case (?memUsedFirstAddress){
+                if (memUsedFirstAddress > allocatedAddressNat64) {
+                    mem.memory_used_firstAddress := Option.make(allocatedAddressNat64);
+                }  
+            };
+            case (_){
+                mem.memory_used_firstAddress := Option.make(allocatedAddressNat64);
+            };
+         };
+       
 
         if (mem.memory_used_lastAddress < end) {
             mem.memory_used_lastAddress := end;

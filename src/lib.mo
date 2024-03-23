@@ -17,7 +17,7 @@ module {
 
         let newItem : MemoryStorage = {
             memory_region: MemoryRegion.MemoryRegion = MemoryRegion.new();
-            var memory_used_firstAddress:Nat64 = 0;
+            var memory_used_firstAddress:?Nat64 = null;
             var memory_used_lastAddress:Nat64 = 0;
             keyToKeyInfoAddressMappings: StableTrieMap.StableTrieMap<Nat32, List.List<Nat64>> = StableTrieMap.new();
             indizesPerKey:Vector.Vector<Vector.Vector<Nat64>> = Vector.new(); 

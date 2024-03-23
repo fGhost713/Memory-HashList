@@ -123,8 +123,6 @@ module {
                     };
                 };
 
-                let what:Blob = Lib.Blobify.Text.to_blob("key1_");
-
                 let key:Blob = switch (n) {
                     case (1) { Lib.Blobify.Text.to_blob("key1_"#rowNumberText); };
                     case (10) { Lib.Blobify.Text.to_blob("key2_"#rowNumberText); };
@@ -155,9 +153,8 @@ module {
 
                         var index : Nat = n -1;
                         for (i in Iter.range(1, n)) {
-
-                            index := index +1;
                             ignore hashList.insert_at_index(key, index, ownType1Blob);
+                            index := index +1;
                         };
                     };
                     case (_) {
