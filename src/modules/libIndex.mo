@@ -1,17 +1,5 @@
-import Blob "mo:base/Blob";
-import StableTrieMap "mo:StableTrieMap";
-import Nat32 "mo:base/Nat32";
-import Nat64 "mo:base/Nat64";
-import Region "mo:base/Region";
 import Iter "mo:base/Iter";
-import List "mo:base/List";
-import Binary "../helpers/binary";
-import Itertools "mo:itertools/Iter";
 import Option "mo:base/Option";
-import Debug "mo:base/Debug";
-import Nat "mo:base/Nat";
-import Result "mo:base/Result";
-import { MemoryRegion } "mo:memory-region";
 import GlobalFunctions "../helpers/globalFunctions";
 import CommonTypes "../types/commonTypes";
 import Vector "mo:vector";
@@ -23,7 +11,7 @@ module {
     public class libIndex(memoryStorageToUse : MemoryStorage) {
 
         private let memoryStorage : MemoryStorage = memoryStorageToUse;
-      
+
         public func is_free_vector_available() : Bool {
             Vector.size(memoryStorage.indizesPerKey_free) > 0;
         };
@@ -62,56 +50,54 @@ module {
         };
 
         // The performance is slow. (O(n))
-        public func remove_at_index(outerIndex : Nat, innerIndex:Nat){
-         
-            let innerVectorOrNull = get_inner_vector(outerIndex);
-            switch(innerVectorOrNull){
-                case (?innerVector){
-                    let vectorSize = Vector.size(innerVector);
-                    if (vectorSize ==0){ 
-                        return
-                    };
-                  
+        public func remove_at_index(outerIndex : Nat, innerIndex : Nat) {
 
-                    if (vectorSize > innerIndex){
-                        if (vectorSize == 1){
+            let innerVectorOrNull = get_inner_vector(outerIndex);
+            switch (innerVectorOrNull) {
+                case (?innerVector) {
+                    let vectorSize = Vector.size(innerVector);
+                    if (vectorSize == 0) {
+                        return;
+                    };
+
+                    if (vectorSize > innerIndex) {
+                        if (vectorSize == 1 or innerIndex == vectorSize + 1) {
                             ignore Vector.removeLast(innerVector);
                             return;
                         };
 
-                        for(index in Iter.range(innerIndex+1, vectorSize-1) ){
-                                let vecVal = Vector.get(innerVector, index);
-                                let prevIndex:Nat = index-1;
-                                Vector.put(innerVector, prevIndex, vecVal);
+                        for (index in Iter.range(innerIndex +1, vectorSize -1)) {
+                            let vecVal : Nat64 = Vector.get(innerVector, index);
+                            let prevIndex : Nat = index -1;
+                            Vector.put(innerVector, prevIndex, vecVal);
                         };
                         ignore Vector.removeLast(innerVector);
                     };
 
                 };
-                case (_){
+                case (_) {
                     return;
                 };
             };
         };
 
-        private func get_last_element(vec:Vector.Vector<Nat64>):?Nat64{
+        private func get_last_element(vec : Vector.Vector<Nat64>) : ?Nat64 {
 
-            let size:Nat = Vector.size(vec);
-            if (size == 0){
+            let size : Nat = Vector.size(vec);
+            if (size == 0) {
                 return null;
             };
 
-            Vector.getOpt<Nat64>(vec, size-1);
+            Vector.getOpt<Nat64>(vec, size -1);
         };
 
-        public func remove_last_element(outerIndex:Nat):?Nat64{
+        public func remove_last_element(outerIndex : Nat) : ?Nat64 {
             let innerVectorOrNull = get_inner_vector(outerIndex);
-            switch(innerVectorOrNull){
-                case (?innerVector){
+            switch (innerVectorOrNull) {
+                case (?innerVector) {
                     Vector.removeLast(innerVector);
                 };
-                case (_)
-                {
+                case (_) {
                     return null;
                 };
             };
@@ -119,60 +105,60 @@ module {
         };
 
         // The performance is slow. (O(n))
-        public func insert_at_index(outerIndex : Nat, innerIndex:Nat, wrappedBlobAddress:Nat64){
-         
+        public func insert_at_index(outerIndex : Nat, innerIndex : Nat, wrappedBlobAddress : Nat64) {
+
             let innerVectorOrNull = get_inner_vector(outerIndex);
-            switch(innerVectorOrNull){
-                case (?innerVector){
+            switch (innerVectorOrNull) {
+                case (?innerVector) {
                     let vectorSize = Vector.size(innerVector);
 
-                    if (vectorSize ==0){ 
-                        if (innerIndex == 0){
-                            append_wrapped_blob_memory_address(outerIndex,wrappedBlobAddress);
+                    if (vectorSize == 0) {
+                        if (innerIndex == 0) {
+                            append_wrapped_blob_memory_address(outerIndex, wrappedBlobAddress);
                         };
-                        return
+                        return;
                     };
 
-                    if (vectorSize == 1){
-                        if (innerIndex == 0){
+                    if (vectorSize == 1) {
+                        if (innerIndex == 0) {
                             let tempValue = Vector.get(innerVector, 0);
-                            Vector.put(innerVector,0, wrappedBlobAddress);
+                            Vector.put(innerVector, 0, wrappedBlobAddress);
                             Vector.add(innerVector, tempValue);
                         };
                         return;
                     };
-                    
-                    if (vectorSize > innerIndex){
+
+                    if (vectorSize > innerIndex) {
 
                         let lastElementOrNull = get_last_element(innerVector);
-                         switch(lastElementOrNull){
-                            case (?foundLastElement){
+                        switch (lastElementOrNull) {
+                            case (?foundLastElement) {
+                                // add dummy element (will be overwritten later)
                                 Vector.add(innerVector, foundLastElement);
                             };
-                            case (_){
-                                append_wrapped_blob_memory_address(outerIndex,wrappedBlobAddress);
+                            case (_) {
+                                append_wrapped_blob_memory_address(outerIndex, wrappedBlobAddress);
                                 return;
                             };
-                         };
-                       
-                        var currIndex:Nat = vectorSize;
+                        };
 
-                        for(index in Iter.range(innerIndex, vectorSize-1) ){
-                            currIndex:=currIndex-1;
+                        var currIndex : Nat = vectorSize;
+
+                        for (index in Iter.range(innerIndex, vectorSize -1)) {
+                            currIndex := currIndex -1;
                             let vecVal = Vector.get(innerVector, currIndex);
-                            let nextIndex:Nat = currIndex+1;
+                            let nextIndex : Nat = currIndex +1;
                             Vector.put(innerVector, nextIndex, vecVal);
                         };
                         Vector.put(innerVector, innerIndex, wrappedBlobAddress);
                     };
 
                 };
-                case (_){
+                case (_) {
                     return;
                 };
             };
         };
-
 
         public func get_address_of_last_stored_wrapped_blob(outerIndex : Nat) : ?Nat64 {
 
@@ -201,7 +187,7 @@ module {
             switch (innerVector_or_null) {
                 case (?innerVector) {
 
-                    let result:?Nat64 = Vector.getOpt(innerVector, innerIndex);
+                    let result : ?Nat64 = Vector.getOpt(innerVector, innerIndex);
                     return result;
 
                 };
@@ -212,17 +198,17 @@ module {
         };
 
         // return last index or null if empty
-        public func get_last_index(outerIndex:Nat):?Nat{
-             
+        public func get_last_index(outerIndex : Nat) : ?Nat {
+
             let innerVector_or_null : ?Vector.Vector<Nat64> = get_inner_vector(outerIndex);
             switch (innerVector_or_null) {
                 case (?innerVector) {
 
-                    var result:Nat = Vector.size(innerVector);
-                    if (result == 0){
+                    var result : Nat = Vector.size(innerVector);
+                    if (result == 0) {
                         return null;
                     };
-                    result := result-1;
+                    result := result -1;
                     return ?result;
                 };
                 case (_) {
@@ -231,7 +217,6 @@ module {
             };
 
         };
-
 
         private func get_inner_vector(outerIndex : Nat) : ?Vector.Vector<Nat64> {
             if (Vector.size(memoryStorage.indizesPerKey) <= outerIndex) {

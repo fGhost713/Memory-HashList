@@ -22,9 +22,6 @@ import LibMemoryHashList "../src/modules/libMemoryHashList";
 import Fuzz "mo:fuzz";
 import VectorHelper "Helper/vectorHelper";
 
-let globalBlobHashFunction = GlobalFunctions.blobHash;
-let dummyBlob : Blob = Lib.Blobify.Text.to_blob("dummyBlob");
-let dummyNat32 : Nat32 = 732354;
 
 type OwnType = {
     myNumber : Nat;
@@ -158,13 +155,13 @@ suite(
 
                 assert hashList.get_all_keys() == [key3, key2, key1];
 
-                ignore hashList.remove_value_at_index(key2, 2);
-                ignore hashList.remove_value_at_index(key2, 1);
+                ignore hashList.remove_at_index(key2, 2);
+                ignore hashList.remove_at_index(key2, 1);
 
                 assert hashList.get_all_keys() == [key3, key2, key1];
 
-                ignore hashList.remove_value_at_index(key2, 0);
-                assert hashList.remove_value_at_index(key2, 0) == #err("Existing value not found for this key at index: 0");
+                ignore hashList.remove_at_index(key2, 0);
+                assert hashList.remove_at_index(key2, 0) == #err("Existing value not found for this key at index: 0");
 
                 assert hashList.get_all_keys() == [key3, key1];
 
@@ -173,7 +170,7 @@ suite(
         );
 
         test(
-            "'update_value_at_index' Tests",
+            "'update_at_index' Tests",
             func() {
 
                 let mem = Lib.get_new_memory_storage(8);
@@ -188,14 +185,14 @@ suite(
                 ignore hashList.add(key1, ownType2Blob);
                 ignore hashList.add(key1, ownType3Blob);
 
-                ignore hashList.update_value_at_index(key1, 1, ownType3Blob);
+                ignore hashList.update_at_index(key1, 1, ownType3Blob);
                 assert hashList.get_at_index(key1, 1) == ?ownType3Blob;
 
                 assert hashList.get_at_range(key1, 0, 7) == [ownType1Blob, ownType3Blob, ownType2Blob, ownType3Blob];
 
-                assert hashList.update_value_at_index(key1, 12, ownType3Blob) == #err("Existing value not found for this key at index 12");
+                assert hashList.update_at_index(key1, 12, ownType3Blob) == #err("Existing value not found for this key at index 12");
 
-                ignore hashList.update_value_at_index(key1, 0, ownType3Blob);
+                ignore hashList.update_at_index(key1, 0, ownType3Blob);
                 assert hashList.get_at_index(key1, 0) == ?ownType3Blob;
 
             },
@@ -203,7 +200,7 @@ suite(
         );
 
         test(
-            "'remove_value_at_index' Tests",
+            "'remove_at_index' Tests",
             func() {
 
                 let mem = Lib.get_new_memory_storage(8);
@@ -218,14 +215,14 @@ suite(
                 ignore hashList.add(key1, ownType2Blob);
                 ignore hashList.add(key1, ownType3Blob);
 
-                let result = hashList.remove_value_at_index(key1, 1);
+                let result = hashList.remove_at_index(key1, 1);
                 assert hashList.get_at_index(key1, 1) == ?ownType2Blob;
 
-                ignore hashList.remove_value_at_index(key1, 0);
+                ignore hashList.remove_at_index(key1, 0);
                 assert hashList.get_at_index(key1, 0) == ?ownType2Blob;
                 assert hashList.get_at_index(key1, 1) == ?ownType3Blob;
 
-                assert hashList.remove_value_at_index(key1, 12) == #err("Existing value not found for this key at index: 12");
+                assert hashList.remove_at_index(key1, 12) == #err("Existing value not found for this key at index: 12");
             },
 
         );
@@ -253,14 +250,14 @@ suite(
                 ignore hashList.add(key1, ownType3Blob);
                 assert hashList.get_last_index(key1) == ?3;
 
-                let result = hashList.remove_value_at_index(key1, 1);
+                let result = hashList.remove_at_index(key1, 1);
                 assert hashList.get_last_index(key1) == ?2;
             },
 
         );
 
         test(
-            "Doing many different operations Tests",
+            "doing many different operations Tests",
             func() {
 
                 let seed = 123456789;
@@ -289,8 +286,6 @@ suite(
 
                     Vector.add(possibleValues, to_candid (dynamicType));
                 };
-
-                assert true == true;
 
                 let isEqual = func checkForEqual(hashList : LibMemoryHashList.libMemoryHashList, vec : VectorHelper.vectorHelper, key : Blob) : Bool {
 
@@ -364,7 +359,7 @@ suite(
                             let randomIndex = fuzz.nat.randomRange(0, 20);
                             let randomBlob : Blob = Vector.get(possibleValues, fuzz.nat.randomRange(0, 255));
                             refVector.update_at_index(randomIndex, randomBlob);
-                            ignore hashList.update_value_at_index(randomKey, randomIndex, randomBlob);
+                            ignore hashList.update_at_index(randomKey, randomIndex, randomBlob);
 
                             assert isEqual(hashList, refVector, randomKey) == true;
                         };
@@ -372,7 +367,7 @@ suite(
                             // remove value at index
                             let randomIndex = fuzz.nat.randomRange(0, 20);
                             refVector.remove_at_index(randomIndex);
-                            ignore hashList.remove_value_at_index(randomKey, randomIndex);
+                            ignore hashList.remove_at_index(randomKey, randomIndex);
 
                             assert isEqual(hashList, refVector, randomKey) == true;
 
@@ -407,7 +402,7 @@ suite(
 
 
         test(
-            "Doing many different operations - with forced hash-collisions - Tests",
+            "doing many different operations - with forced hash-collisions - Tests",
             func() {
 
                 let seed = 123456789;
@@ -444,8 +439,6 @@ suite(
                     Vector.add(possibleValues, to_candid (dynamicType));
                 };
 
-                assert true == true;
-
                 let isEqual = func checkForEqual(hashList : LibMemoryHashList.libMemoryHashList, vec : VectorHelper.vectorHelper, key : Blob) : Bool {
 
                     let lastIndexOrNull = hashList.get_last_index(key);
@@ -518,7 +511,7 @@ suite(
                             let randomIndex = fuzz.nat.randomRange(0, 20);
                             let randomBlob : Blob = Vector.get(possibleValues, fuzz.nat.randomRange(0, 255));
                             refVector.update_at_index(randomIndex, randomBlob);
-                            ignore hashList.update_value_at_index(randomKey, randomIndex, randomBlob);
+                            ignore hashList.update_at_index(randomKey, randomIndex, randomBlob);
 
                             assert isEqual(hashList, refVector, randomKey) == true;
                         };
@@ -526,7 +519,7 @@ suite(
                             // remove value at index
                             let randomIndex = fuzz.nat.randomRange(0, 20);
                             refVector.remove_at_index(randomIndex);
-                            ignore hashList.remove_value_at_index(randomKey, randomIndex);
+                            ignore hashList.remove_at_index(randomKey, randomIndex);
 
                             assert isEqual(hashList, refVector, randomKey) == true;
 

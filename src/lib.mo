@@ -1,13 +1,5 @@
-import LibKeyInfo "modules/libKeyInfo";
-import LibWrappedBlob "modules/libWrappedBlob";
-import Option "mo:base/Option";
-import Blob "mo:base/Blob";
-import Nat8 "mo:base/Nat8";
 import List "mo:base/List";
-import Iter "mo:base/Iter";
 import Nat64 "mo:base/Nat64";
-import Debug "mo:base/Debug";
-import Array "mo:base/Array";
 import BlobifyModule "mo:memory-buffer/Blobify";
 import { MemoryRegion } "mo:memory-region";
 import StableTrieMap "mo:StableTrieMap";
@@ -25,6 +17,8 @@ module {
 
         let newItem : MemoryStorage = {
             memory_region: MemoryRegion.MemoryRegion = MemoryRegion.new();
+            var memory_used_firstAddress:Nat64 = 0;
+            var memory_used_lastAddress:Nat64 = 0;
             keyToKeyInfoAddressMappings: StableTrieMap.StableTrieMap<Nat32, List.List<Nat64>> = StableTrieMap.new();
             indizesPerKey:Vector.Vector<Vector.Vector<Nat64>> = Vector.new(); 
             indizesPerKey_free:Vector.Vector<Nat> = Vector.new();

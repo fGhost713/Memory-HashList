@@ -3,18 +3,11 @@ import LibWrappedBlob "libWrappedBlob";
 import LibKey "libKey";
 import Option "mo:base/Option";
 import Result "mo:base/Result";
-import List "mo:base/List";
 import Nat64 "mo:base/Nat64";
 import Iter "mo:base/Iter";
 import Nat "mo:base/Nat";
-import Debug "mo:base/Debug";
-import Error "mo:base/Error";
-import BlobifyModule "mo:memory-buffer/Blobify";
-import { MemoryRegion } "mo:memory-region";
-import StableTrieMap "mo:StableTrieMap";
 import GlobalFunctions "../helpers/globalFunctions";
 import MemoryStorageTypes "../types/memoryStorage/memoryStorageTypes";
-import CommonTypes "../types/commonTypes";
 import LibIndex "libIndex";
 import Vector "mo:vector";
 
@@ -40,7 +33,7 @@ module {
         };
 
         // adding new value for specified key (if key is not existing it is created)
-        public func add(key : Blob, value : Blob):(Nat /*index*/, Nat64 /* wrapped-blob address*/){
+        public func add(key : Blob, value : Blob) : (Nat /*index*/, Nat64 /* wrapped-blob address*/) {
             let hashedKey : Nat32 = blobHashFunction(key);
 
             let keyInfoAddressResult = libKeyInfo.get_keyinfo_address(key);
@@ -66,8 +59,8 @@ module {
                 libKey.add_entry(hashedKey, newKeyInfoAddress);
 
                 // return the index for the added value and the new wrapped-blob memory address
-                (Option.get(libIndex.get_last_index(outerVectorIndex),0),wrappedBlobMemoryAddress);
-             
+                (Option.get(libIndex.get_last_index(outerVectorIndex), 0), wrappedBlobMemoryAddress);
+
             } else {
 
                 let outer_vector_indexNat64 : Nat64 = libKeyInfo.get_related_outer_vector_index(keyInfoAddress);
@@ -89,10 +82,10 @@ module {
 
                         // add wrapped-blob address vector
                         libIndex.append_wrapped_blob_memory_address(outer_vector_index_Nat, wrappedBlobMemoryAddress);
-                       
+
                         // return the index for the added value and the new wrapped-blob memory address
-                        (Option.get(libIndex.get_last_index(outer_vector_index_Nat),0),wrappedBlobMemoryAddress);
-                        
+                        (Option.get(libIndex.get_last_index(outer_vector_index_Nat), 0), wrappedBlobMemoryAddress);
+
                     };
                     case (_) {
                         // we need to create new
@@ -110,7 +103,7 @@ module {
                         libKeyInfo.set_related_outer_vector_index(keyInfoAddress, Nat64.fromNat(outerVectorIndex));
 
                         // return the index for the added value and the new wrapped-blob memory address
-                        (Option.get(libIndex.get_last_index(outerVectorIndex),0),wrappedBlobMemoryAddress);
+                        (Option.get(libIndex.get_last_index(outerVectorIndex), 0), wrappedBlobMemoryAddress);
                     };
 
                 };
@@ -119,31 +112,30 @@ module {
         };
 
         // Returns all the used keys (as blob)
-        public func get_all_keys():[Blob]{
+        public func get_all_keys() : [Blob] {
             libKeyInfo.get_all_keys();
         };
 
-        // overwrites the existing blob at specified index 
-        public func update_value_at_index(key:Blob, index:Nat, newBlob:Blob):Result.Result<Text,Text>{
+        // overwrites the existing blob at specified index
+        public func update_at_index(key : Blob, index : Nat, newBlob : Blob) : Result.Result<Text, Text> {
             let wrappedBlobAddressOrNull = get_wrapped_blob_address_at_index(key, index);
-            switch(wrappedBlobAddressOrNull){
-                case (?foundWrappedBlobAddress){
-                    libWrappedBlob.update_inner_blob(foundWrappedBlobAddress,newBlob);
+            switch (wrappedBlobAddressOrNull) {
+                case (?foundWrappedBlobAddress) {
+                    libWrappedBlob.update_inner_blob(foundWrappedBlobAddress, newBlob);
                     #ok("The value was updated.");
                 };
-                case (_){
-                    #err("Existing value not found for this key at index " #debug_show(index));
+                case (_) {
+                    #err("Existing value not found for this key at index " #debug_show (index));
                 };
-            }
+            };
         };
 
-        public func insert_at_index(key:Blob, index:Nat, newBlob:Blob):Result.Result<Nat64,Text>{
-
+        public func insert_at_index(key : Blob, index : Nat, newBlob : Blob) : Result.Result<Nat64, Text> {
 
             let keyInfoAddressResult = libKeyInfo.get_keyinfo_address(key);
             let keyInfoWasFound = keyInfoAddressResult.0;
             let keyInfoAddress = keyInfoAddressResult.1;
-            if (index == 0 and keyInfoWasFound == false){
+            if (index == 0 and keyInfoWasFound == false) {
                 let result = add(key, newBlob);
                 return #ok(result.1);
             };
@@ -158,27 +150,27 @@ module {
                 index,
             );
 
-            switch(wrappedBlobAddressOrNull){
-                case (?foundWrappedBlobAddress){
-                    let insertBlobResult = libWrappedBlob.insert_inner_blob(foundWrappedBlobAddress,newBlob);
-                    libIndex.insert_at_index(Nat64.toNat(outer_vector_index), index,insertBlobResult.1);
+            switch (wrappedBlobAddressOrNull) {
+                case (?foundWrappedBlobAddress) {
+                    let insertBlobResult = libWrappedBlob.create_and_insert_new_wrapped_blob(foundWrappedBlobAddress, newBlob);
+                    libIndex.insert_at_index(Nat64.toNat(outer_vector_index), index, insertBlobResult.1);
                     return #ok(insertBlobResult.1);
                 };
-                case (_){
+                case (_) {
                     return #err("Index not found.");
                 };
-            }
+            };
         };
 
-        public func remove_value_at_index(key:Blob, index:Nat):Result.Result<Text,Text>{
+        public func remove_at_index(key : Blob, index : Nat) : Result.Result<Text, Text> {
 
-            let hashedKey : Nat32 =  blobHashFunction(key);
+            let hashedKey : Nat32 = blobHashFunction(key);
             let keyInfoAddressResult = libKeyInfo.get_keyinfo_address(key);
             let keyInfoWasFound = keyInfoAddressResult.0;
             let keyInfoAddress = keyInfoAddressResult.1;
 
             if (keyInfoWasFound == false) {
-                return #err("Existing value not found for this key at index: "#debug_show(index));
+                return #err("Existing value not found for this key at index: " #debug_show (index));
             };
 
             let outer_vector_index = libKeyInfo.get_related_outer_vector_index(keyInfoAddress);
@@ -187,36 +179,35 @@ module {
                 index,
             );
 
-            switch(wrappedBlobAddressOrNull){
-                case (?foundWrappedBlobAddress){
-                   
+            switch (wrappedBlobAddressOrNull) {
+                case (?foundWrappedBlobAddress) {
+
                     let wasLastElement = libWrappedBlob.delete_wrapped_blob(foundWrappedBlobAddress);
-                    if (index == 0 and wasLastElement == true){
-                      
-                            // we can delete all for the key
+                    if (index == 0 and wasLastElement == true) {
 
-                            // delete value from hashed-key. 
-                            // (and key is also removed if it was the last keyinfo-adress for the hashed-key)
-                            libKey.remove_value(hashedKey, keyInfoAddress);
+                        // we can delete all for the key
 
-                            // delete the keyinfo from memory
-                            libKeyInfo.delete(keyInfoAddress);
+                        // delete value from hashed-key.
+                        // (and key is also removed if it was the last keyinfo-adress for the hashed-key)
+                        libKey.remove_value(hashedKey, keyInfoAddress);
 
-                            // clear the vector outer-index
-                            libIndex.empty_inner_vector(Nat64.toNat(outer_vector_index));
+                        // delete the keyinfo from memory
+                        libKeyInfo.delete(keyInfoAddress);
 
-                            return #ok("The value was removed.");
+                        // clear the vector outer-index
+                        libIndex.empty_inner_vector(Nat64.toNat(outer_vector_index));
+
+                        return #ok("The value was removed.");
                     };
-                        
+
                     libIndex.remove_at_index(Nat64.toNat(outer_vector_index), index);
                     #ok("The value was removed.");
                 };
-                case (_){
-                    #err("Existing value not found for this key at index: " #debug_show(index));
+                case (_) {
+                    #err("Existing value not found for this key at index: " #debug_show (index));
                 };
-            }
+            };
         };
-
 
         public func get_at_index(key : Blob, innerIndex : Nat) : ?Blob {
 
@@ -255,7 +246,7 @@ module {
                     };
 
                     var nextAddress : Nat64 = 0;
-                
+
                     switch (firstItemResult.1) {
                         case (?foundNextAddress) {
                             nextAddress := foundNextAddress;
@@ -268,9 +259,9 @@ module {
                     var nextAddressFound = true;
 
                     if ((firstIndex +1) <= lastIndexToUse) {
-                      
+
                         for (index in Iter.range(firstIndex +1, lastIndexToUse)) {
-                           
+
                             if (nextAddressFound == true) {
                                 let innerBlob = libWrappedBlob.get_inner_blob_from_wrapped_blob_Address(nextAddress);
                                 Vector.add(vector, innerBlob);
@@ -309,7 +300,6 @@ module {
             libIndex.get_last_index(Nat64.toNat(outer_vector_index));
         };
 
-
         // Helper functions:
 
         private func get_internal_blob_and_next_address_at_index_internal(key : Blob, innerIndex : Nat) : (?Blob, ?Nat64) {
@@ -338,7 +328,6 @@ module {
             let keyInfoAddressResult = libKeyInfo.get_keyinfo_address(key);
             let keyInfoWasFound = keyInfoAddressResult.0;
             let keyInfoAddress = keyInfoAddressResult.1;
-
 
             if (keyInfoWasFound == false) {
                 return null;
