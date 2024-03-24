@@ -1,0 +1,203 @@
+// @testmode wasi
+import lib "../src/lib";
+import Blob "mo:base/Blob";
+import Text "mo:base/Text";
+import Option "mo:base/Option";
+import Debug "mo:base/Debug";
+import Iter "mo:base/Iter";
+import Nat64 "mo:base/Nat64";
+import List "mo:base/List";
+import Array "mo:base/Array";
+import Nat32 "mo:base/Nat32";
+import LibKey "../src/modules/libKey";
+import GlobalFunctions "../src/helpers/globalFunctions";
+import StableTrieMap "mo:StableTrieMap";
+import Vector "mo:vector";
+import { test; suite } "mo:test";
+import LibIndex "../src/modules/libIndex";
+
+let globalBlobHashFunction = GlobalFunctions.blobHash;
+let dummyBlob : Blob = lib.Blobify.Text.to_blob("dummyBlob");
+let dummyNat32 : Nat32 = 732354;
+
+suite(
+    "LibIndex Tests",
+    func() {
+        test(
+            "Testing common LibIndex functions",
+            func() {
+
+        
+                let mem = lib.get_new_memory_storage(8);
+             
+                let index0 = LibIndex.add_outer_vector(mem);
+                let index1 = LibIndex.add_outer_vector(mem);
+                let index2 = LibIndex.add_outer_vector(mem);
+
+                assert index0 == 0;
+                assert index1 == 1;
+
+                var val = LibIndex.get_address_of_last_stored_wrapped_blob(mem,0);
+                assert val == null;
+
+                val := LibIndex.get_address_of_last_stored_wrapped_blob(mem,10);
+                assert val == null;
+
+                LibIndex.append_wrapped_blob_memory_address(mem,0, 5);
+                LibIndex.append_wrapped_blob_memory_address(mem,0, 6);
+
+                LibIndex.append_wrapped_blob_memory_address(mem,1, 11);
+
+                assert LibIndex.get_last_index(mem,0) == ?1;
+                assert LibIndex.get_last_index(mem,1) == ?0;
+                assert LibIndex.get_last_index(mem,2) == null;
+
+                LibIndex.insert_at_index(mem,0, 0, 3);
+                LibIndex.insert_at_index(mem,0, 1, 4);
+
+                assert LibIndex.get_wrapped_blob_Address(mem,0, 0) == ?3;
+                assert LibIndex.get_wrapped_blob_Address(mem,0, 1) == ?4;
+                assert LibIndex.get_wrapped_blob_Address(mem,0, 2) == ?5;
+                assert LibIndex.get_wrapped_blob_Address(mem,0, 3) == ?6;
+
+                let bla = LibIndex.get_address_of_last_stored_wrapped_blob(mem,0);
+                assert LibIndex.get_address_of_last_stored_wrapped_blob(mem,0) == ?6;
+
+                assert LibIndex.remove_last_element(mem,0) == ?6;
+                assert LibIndex.get_address_of_last_stored_wrapped_blob(mem,0) == ?5;
+                LibIndex.append_wrapped_blob_memory_address(mem,0, 6);
+
+                LibIndex.append_wrapped_blob_memory_address(mem,0, 23);
+                assert LibIndex.get_address_of_last_stored_wrapped_blob(mem,0) == ?23;
+
+                LibIndex.remove_at_index(mem,0, 0);
+                assert LibIndex.get_wrapped_blob_Address(mem,0, 0) == ?4;
+                assert LibIndex.get_wrapped_blob_Address(mem,0, 1) == ?5;
+                assert LibIndex.get_wrapped_blob_Address(mem,0, 2) == ?6;
+                assert LibIndex.get_wrapped_blob_Address(mem,0, 3) == ?23;
+
+                LibIndex.remove_at_index(mem,0, 1);
+                assert LibIndex.get_wrapped_blob_Address(mem,0, 0) == ?4;
+                assert LibIndex.get_wrapped_blob_Address(mem,0, 1) == ?6;
+                assert LibIndex.get_wrapped_blob_Address(mem,0, 2) == ?23;
+
+                LibIndex.remove_at_index(mem,0, 2);
+                assert LibIndex.get_wrapped_blob_Address(mem,0, 0) == ?4;
+                assert LibIndex.get_wrapped_blob_Address(mem,0, 1) == ?6;
+                assert LibIndex.get_wrapped_blob_Address(mem,0, 2) == null;
+                assert LibIndex.get_address_of_last_stored_wrapped_blob(mem,0) == ?6;
+
+                LibIndex.empty_inner_vector(mem,0);
+                assert LibIndex.get_wrapped_blob_Address(mem,0, 0) == null;
+                assert LibIndex.get_wrapped_blob_Address(mem,0, 1) == null;
+                assert LibIndex.get_wrapped_blob_Address(mem,0, 2) == null;
+                assert LibIndex.get_address_of_last_stored_wrapped_blob(mem,0) == null;
+                assert LibIndex.get_last_index(mem,0) == null;
+
+                assert LibIndex.is_free_vector_available(mem) == true;
+                assert Vector.get(mem.indizesPerKey_free, 0) == 0;
+
+                let index0New = LibIndex.add_outer_vector(mem);
+                assert index0New == 0;
+
+                LibIndex.insert_at_index(mem,0, 1, 11);
+                LibIndex.insert_at_index(mem,0, 0, 5);
+                LibIndex.insert_at_index(mem,0, 0, 2);
+                assert LibIndex.get_wrapped_blob_Address(mem,0, 0) == ?2;
+                assert LibIndex.get_wrapped_blob_Address(mem,0, 1) == ?5;
+
+                LibIndex.empty_inner_vector(mem,0);
+                LibIndex.insert_at_index(mem,0, 0, 5);
+                LibIndex.insert_at_index(mem,0, 1, 2);
+                assert LibIndex.get_wrapped_blob_Address(mem,0, 0) == ?5;
+                assert LibIndex.get_wrapped_blob_Address(mem,0, 1) == null;
+            },
+
+        );
+
+        test(
+            "Testing insert many",
+            func() {
+
+       
+                let mem = lib.get_new_memory_storage(8);
+        
+                let index0 = LibIndex.add_outer_vector(mem,);
+                let index1 = LibIndex.add_outer_vector(mem,);
+                let index2 = LibIndex.add_outer_vector(mem,);
+
+                LibIndex.insert_many_at_index(mem,index0, 1, [2, 3, 4, 5]);
+                assert LibIndex.get_last_index(mem,index0) == null;
+
+                LibIndex.insert_many_at_index(mem,index0, 0, [3]);
+                assert LibIndex.get_wrapped_blob_Address(mem,index0, 0) == ?3;
+
+                LibIndex.insert_many_at_index(mem,index0, 0, [2]);
+                assert LibIndex.get_wrapped_blob_Address(mem,index0, 0) == ?2;
+
+                LibIndex.remove_at_index(mem,index0, 0);
+                LibIndex.remove_at_index(mem,index0, 0);
+
+                assert LibIndex.get_wrapped_blob_Address(mem,index0, 0) == null;
+                assert LibIndex.get_wrapped_blob_Address(mem,index0, 1) == null;
+
+                LibIndex.insert_many_at_index(mem,index0, 0, [2, 3, 4, 5]);
+                assert LibIndex.get_last_index(mem,index0) == ?3;
+
+                assert LibIndex.get_wrapped_blob_Address(mem,index0, 0) == ?2;
+                assert LibIndex.get_wrapped_blob_Address(mem,index0, 1) == ?3;
+                assert LibIndex.get_wrapped_blob_Address(mem,index0, 2) == ?4;
+                assert LibIndex.get_wrapped_blob_Address(mem,index0, 3) == ?5;
+                assert LibIndex.get_wrapped_blob_Address(mem,index0, 4) == null;
+
+                LibIndex.insert_many_at_index(mem,index0, 2, [23, 27]);
+
+                assert LibIndex.get_wrapped_blob_Address(mem,index0, 0) == ?2;
+                assert LibIndex.get_wrapped_blob_Address(mem,index0, 1) == ?3;
+                assert LibIndex.get_wrapped_blob_Address(mem,index0, 2) == ?23;
+                assert LibIndex.get_wrapped_blob_Address(mem,index0, 3) == ?27;
+                assert LibIndex.get_wrapped_blob_Address(mem,index0, 4) == ?4;
+                assert LibIndex.get_wrapped_blob_Address(mem,index0, 5) == ?5;
+                assert LibIndex.get_wrapped_blob_Address(mem,index0, 6) == null;
+
+            },
+
+        );
+
+        test(
+            "Testing insertAt and deleteAt with 20 million entries",
+            func() {
+
+          
+                let mem = lib.get_new_memory_storage(8);
+               
+
+                let index0 = LibIndex.add_outer_vector(mem,);
+                let index1 = LibIndex.add_outer_vector(mem,);
+                let index2 = LibIndex.add_outer_vector(mem,);
+
+                for (index in Iter.range(0, 20_000_000)) {
+                    let valueToAdd : Nat64 = Nat64.fromNat(index);
+                    LibIndex.append_wrapped_blob_memory_address(mem,0, valueToAdd);
+                };
+
+                LibIndex.insert_at_index(mem,0, 1, 555);
+                LibIndex.insert_at_index(mem,0, 999_900, 777);
+
+                LibIndex.remove_at_index(mem,0, 5);
+                LibIndex.remove_at_index(mem,0, 999_999);
+
+                assert LibIndex.get_wrapped_blob_Address(mem,0, 0) == ?0;
+                assert LibIndex.get_wrapped_blob_Address(mem,0, 1) == ?555;
+
+                assert LibIndex.get_wrapped_blob_Address(mem,0, 4) == ?3;
+                assert LibIndex.get_wrapped_blob_Address(mem,0, 5) == ?5;
+
+                assert LibIndex.get_wrapped_blob_Address(mem,0, 999_900 -1) == ?777;
+
+            },
+
+        );
+
+    },
+);
