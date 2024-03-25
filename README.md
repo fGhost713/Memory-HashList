@@ -1,20 +1,30 @@
 
 # Memory-HashList #
 
- </br>
+
 
 ## Description: ##
 
-</br>
- The purpose of this module is for storing values into memory and access them by key.</br>
+
+ The purpose of this module is for storing multiple values per key into memory.
+
  The value and the key are blob-types.
- </br></br>
- Two modules are available for that purpose. (MemoryHashList and MemoryMultiHashList)</br></br>
+
+ For each key and each value some overhead is added into heap-memory:
+ - The average overhead for each added key is estimated 180 bits
+ - The average overhead for each value is estimated 64 bits
+
+ The actual blobs for the key and value is stored in the memory-region. (not heap memory)
+ 
+
+ Please note:
+ Getting the blob for at a specified index is now fast,but the functions insert_at_index and remove_at_index are at the moment incredible slow (required much cycles - see benchmark results at the end of this readme text) and should only be used if not much values were added to the key.
+
 
 
 ## Installation of this package ##
 
-(1) First install mops package manager: </br>
+(1) First install mops package manager:
 
         sudo npm i -g ic-mops
 
@@ -27,204 +37,247 @@
 
     mops add memory-hashlist
 
-</br>
+
 
  ## Example usages ##
 
- ### 1. MemoryHashList </br> ###
+ ### Usage with class or stable is possible ###
+
+    import lib "memory-hashlist";
+    import Blob "mo:base/Blob";
+    import Text "mo:base/Text";
+
+
+    actor{
     
-Here we can store exactly one value per key.</br>
-Available functions:</br>
+        // here the replacement-buffer is set to 8 in the constructor
+        stable var mem = lib.get_new_memory_storage(8);
 
-    module MemoryHashList{
-
-        public func get_new_memory_storage() : CommonMemoryHashKeyList.MemoryStorage {
-            CommonMemoryHashKeyList.get_new_memory_storage();
-        };
-
-        public func show_memory_used(item : CommonMemoryHashKeyList.MemoryStorage): (Text){
-            CommonMemoryHashKeyList.show_memory_used(item);
-        };
-
-        public func put(key : Blob, item : CommonMemoryHashKeyList.MemoryStorage, blobToStore : Blob) {
-            CommonMemoryHashKeyList.singleBlob_put(key, item, blobToStore);
-        };
-
-        public func delete(key : Blob, item : CommonMemoryHashKeyList.MemoryStorage) {
-            CommonMemoryHashKeyList.singleBlob_delete(key, item);
-        };
-
-        public func get(key : Blob, item : CommonMemoryHashKeyList.MemoryStorage) : ?Blob {
-            CommonMemoryHashKeyList.singleBlob_get(key, item);
-        };
-
-    };
-
-Example:</br>
-
-    import lib "mo:Memory-HashList";
-    import Blob "mo:base/Blob";
-    import Text "mo:base/Text";
-
-    actor {
-      public query func singleBlob_usage_example() : async () {
-
-        // (1) Create and get new memory_storage (should be used as stable var in production)
-
-        let memoryStore = lib.get_new_memory_storage();
-        let mem = lib.MemoryHashList;
+        let key:Blob = lib.Blobify.Text.to_blob("key1");
+        let blobValue:Blob = lib.Blobify.Text.to_blob("myBlob");
 
 
-        // (2) Create key and value that should be stored
+        // ***************************************************
+        // use as class
 
-        let key1 : Blob = lib.Blobify.Text.to_blob("key1");
-        let blob1 : Blob = lib.Blobify.Text.to_blob("hello");
+        // initializing the hashList with class usage    
+        let hashList = lib.MemoryHashList(mem);
 
+        // add one value                        
+        ignore hashList.add(key, blobValue);
+        
+        // ***************************************************
 
-        // (3) Store the blob into memory
+        // ***************************************************
+        // use as stable:
 
-        mem.put(key1, memoryStore, blob1);
+        lib.StableMemoryHashList.add(mem, key, blobValue);
 
-
-        // (4) Get the stored value from memory
-
-        let storedBlob : ?Blob = mem.get(key1, memoryStore);
-
-
-        // (5) Convert the block to Text
-
-        var storedText : Text = "";
-        switch (storedBlob) {
-            case (?blob) {
-                storedText := lib.Blobify.Text.from_blob(blob);
-            };
-            case (_) {
-                // do nothing
-            };
-        };
-
-
-        // (6) Delete an entry:
-
-        mem.delete(key1, memoryStore);
-      };
+        // ***************************************************
     };
 
 
+ ### Available functions ###
+    
 
- ### 1. MemoryMultiHashList </br> ###
-Here we can store multiple values per key.</br>
-Available functions: </br>
+    // Adding many blobs at once
+    public func add_many(key : Blob, values: [Blob]) 
 
+    // adding new value for specified key (if key is not existing it is created)
+    public func add(key : Blob, value : Blob) 
+    : (Nat /*index*/, Nat64 /* wrapped-blob address*/)
+    
+    // Returns all the used keys (as blob)
+    public func get_all_keys() 
+    : [Blob] 
+    
+    // Overwrites the existing blob at specified index
+    public func update_at_index(key : Blob, index : Nat, newBlob : Blob) 
+    : Bool
+    
+    // Insert many blobs at index
+    public func insert_many_at_index(key : Blob, index : Nat, blobs : [Blob]) 
+    : Result.Result<Text, Text> 
+        
+    // Insert blob-value at index
+    public func insert_at_index(key : Blob, index : Nat, newBlob : Blob) 
+    : Result.Result<Nat64, Text> 
 
+    // Removes values for the key from 'firstIndex' to 'lastIndex'
+    public func remove_at_range(key : Blob, startIndex : Nat, lastIndexOrNull : ?Nat) 
+    : Result.Result<Text, Text> 
+    
+    // Removes value for the key at specific index position
+    public func remove_at_index(key : Blob, index : Nat) 
+    : Result.Result<Text, Text> 
 
-    module MemoryMultiHashList{
+    // removes the key and all the added values to this key
+    public func remove_key(key : Blob) 
+    : Bool 
 
-        public func get_new_memory_storage() : CommonMemoryHashKeyList.MemoryStorage {
-            CommonMemoryHashKeyList.get_new_memory_storage();
-        };
+    // return blob from index
+    public func get_at_index(key : Blob, innerIndex : Nat) 
+    : ?Blob 
 
-        public func show_memory_used(item : CommonMemoryHashKeyList.MemoryStorage): (Text){
-            CommonMemoryHashKeyList.show_memory_used(item);
-        };
+    // return multiply blob's from index 'firstIndex' to the index 'lastIndex'
+    public func get_at_range(key : Blob, firstIndex : Nat, lastIndex : Nat) 
+    : [?Blob]
 
-        public func append(key : Blob, item : CommonMemoryHashKeyList.MemoryStorage, blobToStore : Blob): (Nat64 /* keyInfo address*/, Nat64 /*stored blob address*/)  {
-            CommonMemoryHashKeyList.multiBlob_append(key, item, blobToStore);
-        };
-
-        public func get_all_memory_addresses(key : Blob, item : CommonMemoryHashKeyList.MemoryStorage) : [Nat64] {
-            CommonMemoryHashKeyList.multiBlob_GetAllAddresses(key,item);
-        };
-
-        public func get_by_memory_address(key : Blob, item : CommonMemoryHashKeyList.MemoryStorage, address : Nat64) : ?Blob {
-            CommonMemoryHashKeyList.multiBlob_GetBlob_by_address(key, item, address);
-        };
-
-        public func get_by_index(key : Blob, item : CommonMemoryHashKeyList.MemoryStorage, index : Nat64) : ?Blob {
-            CommonMemoryHashKeyList.multiBlob_GetBlob_by_index(key, item, index);
-        };
-
-        public func get_by_index_and_count(key : Blob, item : CommonMemoryHashKeyList.MemoryStorage, index : Nat64, count:Nat64) : [Blob] {
-            CommonMemoryHashKeyList.multiBlob_GetBlobs_by_index_and_count(key, item, index, count);
-        };
-
-        public func get_all(key : Blob, item : CommonMemoryHashKeyList.MemoryStorage) : [Blob] {
-            CommonMemoryHashKeyList.multiBlob_GetAllBlobs(key, item);
-        };
-
-        public func get_all_with_adresses(key : Blob, item : CommonMemoryHashKeyList.MemoryStorage) : [(Blob, Nat64 /*address*/)] {
-            CommonMemoryHashKeyList.multiBlob_GetAllBlobsWithAdresses(key, item);
-        };
-
-        public func delete(key : Blob, item : CommonMemoryHashKeyList.MemoryStorage, address : Nat64):Result.Result<Blob,Text> {
-            CommonMemoryHashKeyList.multiBlob_delete(key, item, address);
-        };
-
-        public func delete_all(key : Blob, item : CommonMemoryHashKeyList.MemoryStorage) {
-            CommonMemoryHashKeyList.multiBlob_delete_all(key, item);
-        };
-
-    };
+    // return last index or null if empty
+    public func get_last_index(key : Blob) 
+    : ?Nat
+    
+ ### Benchmark ###
 
 
-Example:</br>
-
-    import lib "mo:Memory-HashList";
-    import Blob "mo:base/Blob";
-    import Text "mo:base/Text";
-
-    actor {
-    public query func multiBlob_usage_example() : async () {
-
-        // (1) Create and get new memory_storage (should be used as stable var in production)
-
-        let memoryStore = lib.get_new_memory_storage();
-        let mem = lib.MemoryMultiHashList;
+    Add new items benchmark
 
 
-        // (2) Create key and value that should be stored
+    Instructions
 
-        let key1 : Blob = lib.Blobify.Text.to_blob("key1");
-        let blob1 : Blob = lib.Blobify.Text.to_blob("hello");
-        let blob2 : Blob = lib.Blobify.Text.to_blob("hello");
-        let blob3 : Blob = lib.Blobify.Text.to_blob("hello");
-
-
-        // (3) Store the blobs into memory for the key 'key1'
-
-        ignore mem.append(key1, memoryStore, blob1);
-        ignore mem.append(key1, memoryStore, blob2);
-        ignore mem.append(key1, memoryStore, blob3);
+    |                                             |      1 |      10 |     100 |      1000 |      10000 |
+    | :------------------------------------------ | -----: | ------: | ------: | --------: | ---------: |
+    | Adding new items (each blob-size 35 bytes)  | 18_030 | 103_673 | 910_033 | 8_942_751 | 88_251_405 |
+    | Adding new items (each blob-size 400 bytes) | 18_687 | 105_477 | 920_032 | 9_108_829 | 92_066_494 |
 
 
-        // (4) Get all the stored values for the key 'key1'
+    Heap
 
-        let allValues : [Blob] = mem.get_all(key1, memoryStore);
-
-
-        // (5) Get the second stored value:
-
-        let secondValue : ?Blob = mem.get_by_index(key1, memoryStore, 1);
+    |                                             |   1 |  10 |   100 |  1000 |  10000 |
+    | :------------------------------------------ | --: | --: | ----: | ----: | -----: |
+    | Adding new items (each blob-size 35 bytes)  | 432 | 528 | 1_060 | 5_232 | 43_520 |
+    | Adding new items (each blob-size 400 bytes) | 396 | 504 | 1_056 | 5_324 | 43_504 |
 
 
-        // (6) Get the last two stored values:
-
-        let lastTwoValues : [Blob] = mem.get_by_index_and_count(key1, memoryStore, 1, 2);
+    ——————————————————————————————————————————————————
 
 
-        // (7) Get the used memory-addresses:
 
-        let usedMemoryAddresses : [Nat64] = mem.get_all_memory_addresses(key1, memoryStore);
-
-
-        // (8) Get item by provided memory-address:
-
-        let firstItem : ?Blob = mem.get_by_memory_address(key1, memoryStore, usedMemoryAddresses[0]);
+    Get at index benchmark.
 
 
-        // (9) Remove the first value:
+    Instructions
 
-        ignore mem.delete(key1, memoryStore, usedMemoryAddresses[0]);
-    };
-    };
+    |              |     1 |     10 |     100 |      1000 |      10000 |
+    | :----------- | ----: | -----: | ------: | --------: | ---------: |
+    | Get at index | 6_173 | 50_963 | 496_622 | 4_951_157 | 49_493_770 |
+
+
+    Heap
+
+    |              |   1 |  10 | 100 | 1000 | 10000 |
+    | :----------- | --: | --: | --: | ---: | ----: |
+    | Get at index | 228 | 228 | 228 |  228 |   228 |
+
+
+    ——————————————————————————————————————————————————
+
+
+
+    Insert at index -  benchmark. (slow)
+
+
+    Instructions
+
+    |                              |      1 |      10 |        100 |        1000 |          2000 |
+    | :--------------------------- | -----: | ------: | ---------: | ----------: | ------------: |
+    | Insert value at first index  | 17_480 | 211_922 | 10_491_264 | 946_527_187 | 3_765_145_423 |
+    | Insert value at middle index |  9_171 | 166_161 |  5_834_138 | 479_259_485 | 1_896_108_597 |
+    | Insert value at end index    | 19_542 | 128_339 |  1_206_271 |  11_583_097 |    23_606_882 |
+
+
+    Heap
+
+    |                              |   1 |  10 | 100 |  1000 |  2000 |
+    | :--------------------------- | --: | --: | --: | ----: | ----: |
+    | Insert value at first index  | 244 | 292 | 740 | 4_580 | 8_712 |
+    | Insert value at middle index | 228 | 292 | 740 | 4_580 | 8_712 |
+    | Insert value at end index    | 244 | 292 | 740 | 4_580 | 8_676 |
+
+
+    ——————————————————————————————————————————————————
+
+
+
+    Remove at index - benchmark. (slow)
+
+
+    Instructions
+
+    |                              |      1 |      10 |       100 |        1000 |          2000 |
+    | :--------------------------- | -----: | ------: | --------: | ----------: | ------------: |
+    | Remove value at first index  | 31_048 | 208_244 | 4_967_804 | 319_232_127 | 1_233_713_789 |
+    | Remove value at middle index | 54_038 | 345_081 | 4_532_440 | 177_738_490 |   651_362_333 |
+    | Remove value at end index    | 60_904 | 370_915 | 3_209_385 |  30_774_695 |    52_541_083 |
+
+
+    Heap
+
+    |                              |   1 |   10 |    100 |    1000 |    2000 |
+    | :--------------------------- | --: | ---: | -----: | ------: | ------: |
+    | Remove value at first index  | 108 |  204 |  2_684 |  26_784 |  54_336 |
+    | Remove value at middle index | 128 |  -48 |   -532 |  -4_668 |  -9_060 |
+    | Remove value at end index    | 128 | -376 | -3_924 | -36_168 | -71_852 |
+
+
+    ——————————————————————————————————————————————————
+
+
+
+    Remove key benchmark.
+
+
+    Instructions
+
+    |            |      1 |      10 |     100 |      1000 |      10000 |
+    | :--------- | -----: | ------: | ------: | --------: | ---------: |
+    | Remove key | 23_495 | 108_530 | 938_465 | 9_239_064 | 92_253_809 |
+
+
+    Heap
+
+    |            |   1 | 10 |  100 |   1000 |   10000 |
+    | :--------- | --: | -: | ---: | -----: | ------: |
+    | Remove key | 176 | 28 | -496 | -4_708 | -42_932 |
+
+
+    ——————————————————————————————————————————————————
+
+
+    Update value at index benchmark
+
+
+    Instructions
+
+    |                       |     1 |     10 |     100 |      1000 |      10000 |
+    | :-------------------- | ----: | -----: | ------: | --------: | ---------: |
+    | Update value at index | 5_541 | 59_321 | 548_903 | 5_363_191 | 51_575_545 |
+
+
+    Heap
+
+    |                       |   1 |  10 | 100 | 1000 | 10000 |
+    | :-------------------- | --: | --: | --: | ---: | ----: |
+    | Update value at index | 228 | 228 | 228 |  228 |   228 |
+
+
+    ——————————————————————————————————————————————————
+
+
+
+    Update value at index with fallback to put benchmark.
+
+
+    Instructions
+
+    |                                            |     1 |      10 |       100 |       1000 |       10000 |
+    | :----------------------------------------- | ----: | ------: | --------: | ---------: | ----------: |
+    | Update value at index with fallback to put | 5_541 | 107_346 | 1_302_038 | 14_815_640 | 162_194_728 |
+
+
+    Heap
+
+    |                                            |   1 |  10 |   100 |   1000 |   10000 |
+    | :----------------------------------------- | --: | --: | ----: | -----: | ------: |
+    | Update value at index with fallback to put | 228 | 388 | 3_408 | 31_704 | 317_020 |
 
