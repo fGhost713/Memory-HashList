@@ -30,7 +30,7 @@ module {
         // The replace buffer size
         // If value update method is called and the new blob is not bigger than the initial-blob-size + replaceBufferSize
         // then the existing memory-address can be used, else new memory address would be allocated and old memory-address freed.
-        replaceBufferSize : Nat64;
+        replaceBufferSize : Nat32;
 
     };
 };

@@ -87,7 +87,7 @@ module {
 
                 for (i in Iter.range(1, n)) {
 
-                    hashList.remove_key(key);
+                    ignore hashList.remove_key(key);
                 };
 
             }

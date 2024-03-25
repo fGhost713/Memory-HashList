@@ -30,9 +30,9 @@ suite(
         
                 let mem = lib.get_new_memory_storage(8);
              
-                let index0 = LibIndex.add_outer_vector(mem);
-                let index1 = LibIndex.add_outer_vector(mem);
-                let index2 = LibIndex.add_outer_vector(mem);
+                let index0 = LibIndex.create_and_get_new_outer_vector_index(mem);
+                let index1 = LibIndex.create_and_get_new_outer_vector_index(mem);
+                let index2 = LibIndex.create_and_get_new_outer_vector_index(mem);
 
                 assert index0 == 0;
                 assert index1 == 1;
@@ -70,18 +70,18 @@ suite(
                 LibIndex.append_wrapped_blob_memory_address(mem,0, 23);
                 assert LibIndex.get_address_of_last_stored_wrapped_blob(mem,0) == ?23;
 
-                LibIndex.remove_at_index(mem,0, 0);
+                LibIndex.remove_at_index(mem,0, 0, false);
                 assert LibIndex.get_wrapped_blob_Address(mem,0, 0) == ?4;
                 assert LibIndex.get_wrapped_blob_Address(mem,0, 1) == ?5;
                 assert LibIndex.get_wrapped_blob_Address(mem,0, 2) == ?6;
                 assert LibIndex.get_wrapped_blob_Address(mem,0, 3) == ?23;
 
-                LibIndex.remove_at_index(mem,0, 1);
+                LibIndex.remove_at_index(mem,0, 1, false);
                 assert LibIndex.get_wrapped_blob_Address(mem,0, 0) == ?4;
                 assert LibIndex.get_wrapped_blob_Address(mem,0, 1) == ?6;
                 assert LibIndex.get_wrapped_blob_Address(mem,0, 2) == ?23;
 
-                LibIndex.remove_at_index(mem,0, 2);
+                LibIndex.remove_at_index(mem,0, 2, false);
                 assert LibIndex.get_wrapped_blob_Address(mem,0, 0) == ?4;
                 assert LibIndex.get_wrapped_blob_Address(mem,0, 1) == ?6;
                 assert LibIndex.get_wrapped_blob_Address(mem,0, 2) == null;
@@ -97,7 +97,7 @@ suite(
                 assert LibIndex.is_free_vector_available(mem) == true;
                 assert Vector.get(mem.indizesPerKey_free, 0) == 0;
 
-                let index0New = LibIndex.add_outer_vector(mem);
+                let index0New = LibIndex.create_and_get_new_outer_vector_index(mem);
                 assert index0New == 0;
 
                 LibIndex.insert_at_index(mem,0, 1, 11);
@@ -122,9 +122,9 @@ suite(
        
                 let mem = lib.get_new_memory_storage(8);
         
-                let index0 = LibIndex.add_outer_vector(mem,);
-                let index1 = LibIndex.add_outer_vector(mem,);
-                let index2 = LibIndex.add_outer_vector(mem,);
+                let index0 = LibIndex.create_and_get_new_outer_vector_index(mem,);
+                let index1 = LibIndex.create_and_get_new_outer_vector_index(mem,);
+                let index2 = LibIndex.create_and_get_new_outer_vector_index(mem,);
 
                 LibIndex.insert_many_at_index(mem,index0, 1, [2, 3, 4, 5]);
                 assert LibIndex.get_last_index(mem,index0) == null;
@@ -172,9 +172,9 @@ suite(
                 let mem = lib.get_new_memory_storage(8);
                
 
-                let index0 = LibIndex.add_outer_vector(mem,);
-                let index1 = LibIndex.add_outer_vector(mem,);
-                let index2 = LibIndex.add_outer_vector(mem,);
+                let index0 = LibIndex.create_and_get_new_outer_vector_index(mem,);
+                let index1 = LibIndex.create_and_get_new_outer_vector_index(mem,);
+                let index2 = LibIndex.create_and_get_new_outer_vector_index(mem,);
 
                 for (index in Iter.range(0, 20_000_000)) {
                     let valueToAdd : Nat64 = Nat64.fromNat(index);

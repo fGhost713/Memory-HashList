@@ -6,11 +6,13 @@ import StableMemoryHashList "libStableMemoryHashList";
 
 module {
 
+    // Memory-HashList for class usage
     public class libMemoryHashList(memoryStorageToUse : MemoryStorageTypes.MemoryStorage) {
 
         private let memoryStorage : MemoryStorageTypes.MemoryStorage = memoryStorageToUse;
         private type MemoryStorage = MemoryStorageTypes.MemoryStorage;
 
+        // Adding many blobs at once
         public func add_many(key : Blob, values : [Blob]) {
             StableMemoryHashList.add_many(memoryStorage, key, values);
         };
@@ -26,7 +28,7 @@ module {
         };
 
         // Overwrites the existing blob at specified index
-        public func update_at_index(key : Blob, index : Nat, newBlob : Blob) : Result.Result<Text, Text> {
+        public func update_at_index(key : Blob, index : Nat, newBlob : Blob) : Bool {
             StableMemoryHashList.update_at_index(memoryStorage : MemoryStorage, key : Blob, index : Nat, newBlob : Blob);
         };
 
@@ -55,19 +57,21 @@ module {
         };
 
         // removes the key and all the added values to this key
-        public func remove_key(key : Blob) {
+        public func remove_key(key : Blob) : Bool {
 
             StableMemoryHashList.remove_key(memoryStorage : MemoryStorage, key : Blob);
 
         };
 
+        // return blob from index
         public func get_at_index(key : Blob, innerIndex : Nat) : ?Blob {
 
             StableMemoryHashList.get_at_index(memoryStorage : MemoryStorage, key : Blob, innerIndex : Nat);
 
         };
 
-        public func get_at_range(key : Blob, firstIndex : Nat, lastIndex : Nat) : [Blob] {
+        // return multiply blob's from index 'firstIndex' to the index 'lastIndex'
+        public func get_at_range(key : Blob, firstIndex : Nat, lastIndex : Nat) : [?Blob] {
 
             StableMemoryHashList.get_at_range(memoryStorage : MemoryStorage, key : Blob, firstIndex : Nat, lastIndex : Nat);
 

@@ -49,11 +49,12 @@ module {
         };
     };
 
-    // Returns all the used key-hashes.
+    // Returns all the used key-hashes.(So not the key as blob itself, but the stored key-hash as Nat32)
     public func get_key_hashes(memoryStorage : MemoryStorage) : Iter.Iter<Nat32> {
         StableTrieMap.keys(memoryStorage.keyToKeyInfoAddressMappings);
     };
 
+    // return the keyinfo-memory-addresses stored for the key. (multiple values if hash-collision for the key happened)
     public func get_vals_for_key(memoryStorage : MemoryStorage, key : Blob) : List.List<Nat64> {
         let hashedKey : Nat32 = blobHashFunction(key);
         get_vals_for_hashed_key(memoryStorage, hashedKey);

@@ -3,307 +3,201 @@ import Nat64 "mo:base/Nat64";
 import Region "mo:base/Region";
 import Option "mo:base/Option";
 import Debug "mo:base/Debug";
+import Nat16 "mo:base/Nat16";
+import Nat32 "mo:base/Nat32";
 import CommonTypes "../types/commonTypes";
 import MemoryStorageTypes "../types/memoryStorage/memoryStorageTypes";
 import GlobalFunctions "../helpers/globalFunctions";
 
 module {
 
-    
-        private let offsets = CommonTypes.Offsets_WrappedBlob;
+    private let offsets = CommonTypes.Offsets_WrappedBlob;
 
-        public func get_internal_blob_size_from_address(memoryStorage : MemoryStorageTypes.MemoryStorage,memoryAddress : Nat64) : Nat64 {
-            Region.loadNat64(memoryStorage.memory_region.region, memoryAddress + offsets.internalBlobSize);
+    // returns the internal blob size in bytes
+    public func get_internal_blob_size_from_address(memoryStorage : MemoryStorageTypes.MemoryStorage, memoryAddress : Nat64) : Nat32 {
+        Region.loadNat32(memoryStorage.memory_region.region, memoryAddress + offsets.internalBlobSize);
+    };
+
+    // set the internal blob size
+    public func set_internal_blob_size(memoryStorage : MemoryStorageTypes.MemoryStorage, memoryAddress : Nat64, blobSize : Nat32) {
+        Region.storeNat32(memoryStorage.memory_region.region, memoryAddress + offsets.internalBlobSize, blobSize);
+    };
+
+    // returns the allocated size for the internal blob
+    public func get_internal_blob_allocated_size_from_address(memoryStorage : MemoryStorageTypes.MemoryStorage, memoryAddress : Nat64) : Nat32 {
+        Region.loadNat32(memoryStorage.memory_region.region, memoryAddress + offsets.internalBlobAllocatedSize);
+    };
+
+    // set the allocated size for the internal blob
+    public func set_internal_blob_allocated_size(memoryStorage : MemoryStorageTypes.MemoryStorage, memoryAddress : Nat64, allocatedBlobSize : Nat32) {
+        Region.storeNat32(memoryStorage.memory_region.region, memoryAddress + offsets.internalBlobAllocatedSize, allocatedBlobSize);
+    };
+
+    // returns the related memory address where the internal blob is stored
+    public func get_memory_address_of_internal_blob(memoryStorage : MemoryStorageTypes.MemoryStorage, memoryAddress : Nat64) : Nat64 {
+        Region.loadNat64(memoryStorage.memory_region.region, memoryAddress + offsets.internalBlobAddress);
+    };
+
+    // set the related memory address where the internal blob is stored
+    public func set_memory_address_of_internal_blob(memoryStorage : MemoryStorageTypes.MemoryStorage, memoryAddress : Nat64, internalBlobAddress : Nat64) {
+        Region.storeNat64(memoryStorage.memory_region.region, memoryAddress + offsets.internalBlobAddress, internalBlobAddress);
+    };
+
+    // returns the identifier-value stored in memory
+    public func get_identifier(memoryStorage : MemoryStorageTypes.MemoryStorage, memoryAddress : Nat64) : Nat64 {
+        Region.loadNat64(memoryStorage.memory_region.region, memoryAddress + offsets.identifier);
+    };
+
+    // set the identifier-value stored in memory to the default wrappedBlob-identifier value
+    public func set_identifier(memoryStorage : MemoryStorageTypes.MemoryStorage, memoryAddress : Nat64) {
+        Region.storeNat64(memoryStorage.memory_region.region, memoryAddress + offsets.identifier, CommonTypes.identifier_WrappedBlob);
+    };
+
+    // the identifier is set to zero on the related memory-position
+    public func remove_identifier(memoryStorage : MemoryStorageTypes.MemoryStorage, memoryAddress : Nat64) {
+        Region.storeNat64(memoryStorage.memory_region.region, memoryAddress + offsets.identifier, 0);
+    };
+
+    // returns if wrapped-blob (type) is stored in the memory-address
+    public func is_wrapped_blob_on_address(memoryStorage : MemoryStorageTypes.MemoryStorage, memoryAddress : Nat64) : Bool {
+        let ident = get_identifier(memoryStorage, memoryAddress);
+        return ident == CommonTypes.identifier_WrappedBlob;
+    };
+
+    // returns the version-number
+    public func get_version(memoryStorage : MemoryStorageTypes.MemoryStorage, memoryAddress : Nat64) : Nat16 {
+        Region.loadNat16(memoryStorage.memory_region.region, memoryAddress + offsets.version);
+    };
+
+    // sets the version to the curent latest version number
+    public func set_version(memoryStorage : MemoryStorageTypes.MemoryStorage, memoryAddress : Nat64) {
+        Region.storeNat16(memoryStorage.memory_region.region, memoryAddress + offsets.version, CommonTypes.version);
+    };
+
+    // returns the inner-blob from memory
+    public func get_inner_blob_from_wrapped_blob_Address(memoryStorage : MemoryStorageTypes.MemoryStorage, memoryAddress : Nat64) : ?Blob {
+
+        if (is_wrapped_blob_on_address(memoryStorage, memoryAddress) == false) {
+            return null;
         };
+        let blobSize : Nat32 = get_internal_blob_size_from_address(memoryStorage, memoryAddress);
+        let internalBlobAddress : Nat64 = get_memory_address_of_internal_blob(memoryStorage, memoryAddress);
+        let result = Region.loadBlob(memoryStorage.memory_region.region, internalBlobAddress, Nat32.toNat(blobSize));
+        return Option.make(result);
+    };
 
-        public func set_internal_blob_size(memoryStorage : MemoryStorageTypes.MemoryStorage,memoryAddress : Nat64, blobSize : Nat64) {
-            Region.storeNat64(memoryStorage.memory_region.region, memoryAddress + offsets.internalBlobSize, blobSize);
-        };
+    // returns true if deleted, otherwise false is returned
+    public func delete_wrapped_blob(memoryStorage : MemoryStorageTypes.MemoryStorage, wrappedBlobAddress : Nat64) : Bool {
 
-        public func get_internal_blob_allocated_size_from_address(memoryStorage : MemoryStorageTypes.MemoryStorage,memoryAddress : Nat64) : Nat64 {
-            Region.loadNat64(memoryStorage.memory_region.region, memoryAddress + offsets.internalBlobAllocatedSize);
-        };
-
-        public func set_internal_blob_allocated_size(memoryStorage : MemoryStorageTypes.MemoryStorage,memoryAddress : Nat64, allocatedBlobSize : Nat64) {
-            Region.storeNat64(memoryStorage.memory_region.region, memoryAddress + offsets.internalBlobAllocatedSize, allocatedBlobSize);
-        };
-
-        public func get_memory_address_of_internal_blob(memoryStorage : MemoryStorageTypes.MemoryStorage,memoryAddress : Nat64) : Nat64 {
-            Region.loadNat64(memoryStorage.memory_region.region, memoryAddress + offsets.internalBlobAddress);
-        };
-
-        public func set_memory_address_of_internal_blob(memoryStorage : MemoryStorageTypes.MemoryStorage,memoryAddress : Nat64, internalBlobAddress : Nat64) {
-            Region.storeNat64(memoryStorage.memory_region.region, memoryAddress + offsets.internalBlobAddress, internalBlobAddress);
-        };
-
-        public func update_previous_wrapped_blob_address_value(memoryStorage : MemoryStorageTypes.MemoryStorage,memoryAddress : Nat64, newPreviousAddress : Nat64) {
-            // Address of previous item
-            Region.storeNat64(memoryStorage.memory_region.region, memoryAddress + offsets.addressOfPreviousItem, newPreviousAddress);
-        };
-
-        public func update_next_wrapped_blob_address_value(memoryStorage : MemoryStorageTypes.MemoryStorage,memoryAddress : Nat64, newNextAddress : Nat64) {
-            // Address of next item
-            Region.storeNat64(memoryStorage.memory_region.region, memoryAddress + offsets.addressOfNextItem, newNextAddress);
-        };
-
-        public func get_previous_wrapped_blob_address(memoryStorage : MemoryStorageTypes.MemoryStorage,memoryAddress : Nat64) : (Bool, Nat64) {
-            // Address of previous item
-            let previousAddress = Region.loadNat64(memoryStorage.memory_region.region, memoryAddress + offsets.addressOfPreviousItem);
-            if (previousAddress == memoryAddress) {
-                return (false, 0);
-            };
-            (true, previousAddress);
-        };
-
-        public func get_next_wrapped_blob_address(memoryStorage : MemoryStorageTypes.MemoryStorage,memoryAddress : Nat64) : (Bool /*next address was found*/ , Nat64) {
-            // Address of next item
-            let nextAddress = Region.loadNat64(memoryStorage.memory_region.region, memoryAddress + offsets.addressOfNextItem);
-            if (nextAddress == memoryAddress) {
-                return (false, 0);
-            };
-            (true, nextAddress);
-        };
-
-        public func get_inner_blob_from_wrapped_blob_Address(memoryStorage : MemoryStorageTypes.MemoryStorage,memoryAddress : Nat64) : Blob {
-            let blobSize = get_internal_blob_size_from_address(memoryStorage,memoryAddress);
-            let internalBlobAddress : Nat64 = get_memory_address_of_internal_blob(memoryStorage,memoryAddress);
-            Region.loadBlob(memoryStorage.memory_region.region, internalBlobAddress, Nat64.toNat(blobSize));
-        };
-
-        // delete the wrapped blob.
-        // -> returns true if it was the last wrapped-blob, otherwise false is returned.
-        public func delete_wrapped_blob(memoryStorage : MemoryStorageTypes.MemoryStorage,wrappedBlobAddress : Nat64) : Bool {
-            let previousItemResult = get_previous_wrapped_blob_address(memoryStorage,wrappedBlobAddress);
-            let nextItemResult = get_next_wrapped_blob_address(memoryStorage,wrappedBlobAddress);
-
-            let allocatedInnerBlobSize = get_internal_blob_allocated_size_from_address(memoryStorage,wrappedBlobAddress);
-            let innerBlobAddress = get_memory_address_of_internal_blob(memoryStorage,wrappedBlobAddress);
-
-            // deallocate internal blob
-            GlobalFunctions.deallocate(memoryStorage, innerBlobAddress, allocatedInnerBlobSize);
-
-            // deallocate wrapped-blob
-            GlobalFunctions.deallocate(memoryStorage, wrappedBlobAddress, offsets.bytesNeeded);
-
-            if (previousItemResult.0 == true) {
-                // If we are here, then predecessor is existing
-
-                if (nextItemResult.0 == true) {
-                    // If we are here, then successor is existing
-                    update_next_wrapped_blob_address_value(memoryStorage,previousItemResult.1, nextItemResult.1);
-                    update_previous_wrapped_blob_address_value(memoryStorage,nextItemResult.1, previousItemResult.1);
-
-                } else {
-                    // set next item to itself for the predecessor item
-                    update_next_wrapped_blob_address_value(memoryStorage,previousItemResult.1, previousItemResult.1);
-                };
-            } else if (nextItemResult.0 == true) {
-                // If we are here then the next item will be the new first item
-
-                // set the previous item to itself, so it is marked as first item
-                update_previous_wrapped_blob_address_value(memoryStorage,nextItemResult.1, nextItemResult.1);
-
-            } else {
-                return true;
-            };
-
+        if (is_wrapped_blob_on_address(memoryStorage, wrappedBlobAddress) == false) {
             return false;
-
         };
 
-        // Ihe wrapped-blob and all next wrapped-blobs until 'lastWrappedBlobAddress' will be removed.
-        // In case 'lastWrappedBlobAddress' is null (or not found as a  next element), then all next items will be removed.
-        public func delete_wrapped_blobs(memoryStorage : MemoryStorageTypes.MemoryStorage,firstWrappedBlobAddress : Nat64, lastWrappedBlobAddress : ?Nat64) : (Bool /*first wrapped-blob address changed*/, Nat64) {
+        let allocatedInnerBlobSize : Nat32 = get_internal_blob_allocated_size_from_address(memoryStorage, wrappedBlobAddress);
+        let innerBlobAddress : Nat64 = get_memory_address_of_internal_blob(memoryStorage, wrappedBlobAddress);
 
-            var currentAddress : Nat64 = firstWrappedBlobAddress;
-            var completed : Bool = false;
+        // deallocate internal blob
+        GlobalFunctions.deallocate(memoryStorage, innerBlobAddress, Nat64.fromNat32(allocatedInnerBlobSize));
 
-            var endWasDefined = false;
-            var endAddress : Nat64 = 0;
+        // remove identifier
+        remove_identifier(memoryStorage, wrappedBlobAddress);
 
-            switch (lastWrappedBlobAddress) {
-                case (?foundLastWrappedAddress) {
-                    endAddress := foundLastWrappedAddress;
-                    endWasDefined := true;
-                };
-                case (_) {
-                    endWasDefined := false;
-                };
-            };
+        // deallocate wrapped-blob
+        GlobalFunctions.deallocate(memoryStorage, wrappedBlobAddress, offsets.bytesNeeded);
 
-            let previousAddressResult : (Bool, Nat64) = get_previous_wrapped_blob_address(memoryStorage,currentAddress);
-            var nextAddressResult : (Bool, Nat64) = (false, 0);
-            var deleteCounter = 0;
-            while (completed == false) {
+        return true;
 
-                nextAddressResult := get_next_wrapped_blob_address(memoryStorage,currentAddress);
-     
+    };
 
-                let allocatedInnerBlobSize = get_internal_blob_allocated_size_from_address(memoryStorage,currentAddress);
-                let innerBlobAddress = get_memory_address_of_internal_blob(memoryStorage,currentAddress);
+    // returns true if update was successfull
+    public func update_inner_blob(memoryStorage : MemoryStorageTypes.MemoryStorage, wrappedBlobAddress : Nat64, newBlobToStore : Blob) : Bool {
 
-                // deallocate internal blob
-                GlobalFunctions.deallocate(memoryStorage, innerBlobAddress, allocatedInnerBlobSize);
-
-                // deallocate wrapped-blob
-                GlobalFunctions.deallocate(memoryStorage, currentAddress, offsets.bytesNeeded);
-
-                if (currentAddress == endAddress) {
-                    completed := true;
-                } else
-          
-                if (nextAddressResult.0 == false) {
-
-                    completed := true;
-                } else {
-                    currentAddress:=nextAddressResult.1;
-                };
-            
-                deleteCounter := deleteCounter + 1;
-            };
-
-            if (previousAddressResult.0 == true) {
-
-                if (nextAddressResult.0 == true) {
-                    update_next_wrapped_blob_address_value(memoryStorage,previousAddressResult.1, nextAddressResult.1);
-                    update_previous_wrapped_blob_address_value(memoryStorage,nextAddressResult.1, previousAddressResult.1);
-                } else {
-                    update_next_wrapped_blob_address_value(memoryStorage,previousAddressResult.1, previousAddressResult.1);
-                };
-            } else if (nextAddressResult.0 == true) {
-                update_previous_wrapped_blob_address_value(memoryStorage,nextAddressResult.1, nextAddressResult.1);
-                return (true, nextAddressResult.1);
-            };
-
-            return (false, 0);
-
+        if (is_wrapped_blob_on_address(memoryStorage, wrappedBlobAddress) == false) {
+            return false;
         };
 
-        // insert wrapped-blob before 'nextWrappedBlobAddress'
-        // -> returns first tuple as true when the inserted blob is now the new first element,
-        //    and otherwise false is returned.
-        //    The second tuple is the new wrappedBlob-memory address
-        public func create_and_insert_new_wrapped_blob(memoryStorage : MemoryStorageTypes.MemoryStorage,nextWrappedBlobAddress : Nat64, newBlobToStore : Blob) : (Bool, Nat64) {
+        let newBlobSize : Nat = newBlobToStore.size();
+        let newBlobSizeNat32 : Nat32 = Nat32.fromNat(newBlobSize);
+        let oldBlobAddress : Nat64 = get_memory_address_of_internal_blob(memoryStorage, wrappedBlobAddress);
 
-            let previousItemResult = get_previous_wrapped_blob_address(memoryStorage,nextWrappedBlobAddress);
-            var previousWrappedBlobAddress : ?Nat64 = null;
-            if (previousItemResult.0 == true) {
-                previousWrappedBlobAddress := Option.make(previousItemResult.1);
-            };
+        let allocatedSize : Nat32 = get_internal_blob_allocated_size_from_address(memoryStorage, wrappedBlobAddress);
+        if (newBlobSizeNat32 <= allocatedSize) {
+            // we can directly overwrite the previous blob in memory
 
-            // create new wrappedBlob
-            let insertedWrappedBlobAddress : Nat64 = create_new(
-                memoryStorage,
-                newBlobToStore,
-                previousWrappedBlobAddress,
-                Option.make(nextWrappedBlobAddress),
-            );
+            // set the new size
+            set_internal_blob_size(memoryStorage, wrappedBlobAddress, newBlobSizeNat32);
 
-            if (previousItemResult.0 == true) {
-                update_next_wrapped_blob_address_value(memoryStorage,previousItemResult.1, insertedWrappedBlobAddress);
-            };
+            // overwrite old blob with new blob
+            Region.storeBlob(memoryStorage.memory_region.region, oldBlobAddress, newBlobToStore);
 
-            update_previous_wrapped_blob_address_value(memoryStorage,nextWrappedBlobAddress, insertedWrappedBlobAddress);
+        } else {
+            // we need to delete old internal-blob memory and reallocate new memory + store the updated blob
 
-            if (previousItemResult.0 == true) {
-                return (false, insertedWrappedBlobAddress);
-            };
+            // deallocate the old blob
+            GlobalFunctions.deallocate(memoryStorage, oldBlobAddress, Nat64.fromNat32(allocatedSize));
 
-            return (true, insertedWrappedBlobAddress);
+            // allocate new memory space
+            let allocatedSizeForUpdatedBlob = newBlobSize + Nat32.toNat(memoryStorage.replaceBufferSize);
+            let newInternalBlobAddress = GlobalFunctions.allocate(memoryStorage, Nat64.fromNat(allocatedSizeForUpdatedBlob));
+
+            // store the updated blob
+            Region.storeBlob(memoryStorage.memory_region.region, Nat64.fromNat(newInternalBlobAddress), newBlobToStore);
+
+            // store the address of the updated blob
+            set_memory_address_of_internal_blob(memoryStorage, wrappedBlobAddress, Nat64.fromNat(newInternalBlobAddress));
+
+            // store the allocated-size-value
+            set_internal_blob_allocated_size(memoryStorage, wrappedBlobAddress, Nat32.fromNat(allocatedSizeForUpdatedBlob));
+
+            // store the size of the updated blob
+            set_internal_blob_size(memoryStorage, wrappedBlobAddress, newBlobSizeNat32);
         };
 
-        public func update_inner_blob(memoryStorage : MemoryStorageTypes.MemoryStorage,wrappedBlobAddress : Nat64, newBlobToStore : Blob) {
+        return true;
 
-            let newBlobSize : Nat = newBlobToStore.size();
-            let newBlobSizeNat64 : Nat64 = Nat64.fromNat(newBlobSize);
-            let oldBlobAddress : Nat64 = get_memory_address_of_internal_blob(memoryStorage,wrappedBlobAddress);
+    };
 
-            let allocatedSize : Nat64 = get_internal_blob_allocated_size_from_address(memoryStorage,wrappedBlobAddress);
-            if (newBlobSizeNat64 <= allocatedSize) {
-                // we can directly overwrite the previous blob in memory
+    // Create and store new wrappedBlob entry in memory.
+    // -> The wrapped-Blob is written directly into memory.
+    //    This means the actual blob for the type 'wrappedBlob'
+    //    (defined in types/wrappedBlob/wrappedBlobTypes.mo') is not created.
 
-                // set the new size
-                set_internal_blob_size(memoryStorage,wrappedBlobAddress, newBlobSizeNat64);
+    public func create_new(memoryStorage : MemoryStorageTypes.MemoryStorage, blobToStore : Blob) : Nat64 /* stored wrappedBlob address*/ {
 
-                // overwrite old blob with new blob
-                Region.storeBlob(memoryStorage.memory_region.region, oldBlobAddress, newBlobToStore);
+        // allocate memory and get the memory address
 
-            } else {
-                // we need to delete old internal-blob memory and reallocate new memory + store the updated blob
+        let memoryAddress = Nat64.fromNat(GlobalFunctions.allocate(memoryStorage, offsets.bytesNeeded));
 
-                // deallocate the old blob
-                GlobalFunctions.deallocate(memoryStorage, oldBlobAddress, allocatedSize);
+        // Store the wrappedBlob info direct into memory.
+        // (This is faster than create and save instance of 'wrappedBlob'-type into memory)
 
-                // allocate new memory space
-                let allocatedSizeForUpdatedBlob = newBlobSize + Nat64.toNat(memoryStorage.replaceBufferSize);
-                let newInternalBlobAddress = GlobalFunctions.allocate(memoryStorage, Nat64.fromNat(allocatedSizeForUpdatedBlob));
+        // identifier
+        Region.storeNat64(memoryStorage.memory_region.region, memoryAddress + offsets.identifier, CommonTypes.identifier_WrappedBlob);
 
-                // store the allocated-size
-                set_internal_blob_allocated_size(memoryStorage,wrappedBlobAddress, Nat64.fromNat(allocatedSizeForUpdatedBlob));
+        // version
+        Region.storeNat16(memoryStorage.memory_region.region, memoryAddress + offsets.version, CommonTypes.version);
 
-                // store the updated blob
-                Region.storeBlob(memoryStorage.memory_region.region, Nat64.fromNat(newInternalBlobAddress), newBlobToStore);
+        // store size of 'blobToStore':
+        let blobToStoreSize = blobToStore.size();
+        Region.storeNat32(memoryStorage.memory_region.region, memoryAddress + offsets.internalBlobSize, Nat32.fromNat(blobToStoreSize));
 
-                // store the address of the updated blob
-                set_memory_address_of_internal_blob(memoryStorage,wrappedBlobAddress, Nat64.fromNat(newInternalBlobAddress));
+        // store internalBlobAllocatedSize
+        let internalBlobAllocatedSize : Nat = blobToStoreSize + Nat32.toNat(memoryStorage.replaceBufferSize);
 
-                // store the allocated-size-value
-                set_internal_blob_allocated_size(memoryStorage,wrappedBlobAddress, Nat64.fromNat(allocatedSizeForUpdatedBlob));
+        Region.storeNat32(
+            memoryStorage.memory_region.region,
+            memoryAddress + offsets.internalBlobAllocatedSize,
+            Nat32.fromNat(internalBlobAllocatedSize),
+        );
 
-                // store the size of the updated blob
-                set_internal_blob_size(memoryStorage,wrappedBlobAddress, newBlobSizeNat64);
-            };
+        // store now the actual blob 'blobToStore'
+        let memoryAddressOfInternalBlob = Nat64.fromNat(GlobalFunctions.allocate(memoryStorage, Nat64.fromNat(internalBlobAllocatedSize)));
+        Region.storeBlob(memoryStorage.memory_region.region, memoryAddressOfInternalBlob, blobToStore);
 
-        };
+        // and now store the related internal-blob-address
+        Region.storeNat64(memoryStorage.memory_region.region, memoryAddress + offsets.internalBlobAddress, memoryAddressOfInternalBlob);
 
-        // Create and store new wrappedBlob entry in memory.
-        // -> The wrapped-Blob is written directly into memory.
-        //    This means the actual blob for the type 'wrappedBlob'
-        //    (defined in types/wrappedBlob/wrappedBlobTypes.mo') is not created.
+        return memoryAddress;
+    };
 
-        public func create_new(
-            memoryStorage : MemoryStorageTypes.MemoryStorage,
-            blobToStore : Blob,
-            previousWrappedBlobAddress : ?Nat64,
-            nextWrappedBlobAddress : ?Nat64,
-        ) : Nat64 /* stored wrappedBlob address*/ {
-
-            // allocate memory and get the memory address
-
-            let memoryAddress = Nat64.fromNat(GlobalFunctions.allocate(memoryStorage, offsets.bytesNeeded));
-
-            let addressOfPreviousWrappedBlob : Nat64 = Option.get(previousWrappedBlobAddress, memoryAddress);
-            let addressOfNextWrappedBlob : Nat64 = Option.get(nextWrappedBlobAddress, memoryAddress);
-
-            // Store the wrappedBlob info direct into memory.
-            // (This is faster than create and save instance of 'wrappedBlob'-type into memory)
-
-            // Address of next item
-            Region.storeNat64(memoryStorage.memory_region.region, memoryAddress + offsets.addressOfNextItem, addressOfNextWrappedBlob);
-
-            // Address of previous item
-            Region.storeNat64(memoryStorage.memory_region.region, memoryAddress + offsets.addressOfPreviousItem, addressOfPreviousWrappedBlob);
-
-            // store size of 'blobToStore':
-            let blobToStoreSize = blobToStore.size();
-            Region.storeNat64(memoryStorage.memory_region.region, memoryAddress + offsets.internalBlobSize, Nat64.fromNat(blobToStoreSize));
-
-            // store now the actual blob 'blobToStore'
-            let internalBlobAllocatedSize = blobToStoreSize + Nat64.toNat(memoryStorage.replaceBufferSize);
-
-            Region.storeNat64(
-                memoryStorage.memory_region.region,
-                memoryAddress + offsets.internalBlobAllocatedSize,
-                Nat64.fromNat(internalBlobAllocatedSize),
-            );
-
-            let memoryAddressOfInternalBlob = Nat64.fromNat(GlobalFunctions.allocate(memoryStorage, Nat64.fromNat(internalBlobAllocatedSize)));
-            Region.storeBlob(memoryStorage.memory_region.region, memoryAddressOfInternalBlob, blobToStore);
-
-            // and now store the related internal-blob-address
-            Region.storeNat64(memoryStorage.memory_region.region, memoryAddress + offsets.internalBlobAddress, memoryAddressOfInternalBlob);
-
-            return memoryAddress;
-        };
-    
 };

@@ -3,9 +3,12 @@ import Option "mo:base/Option";
 import Array "mo:base/Array";
 import Debug "mo:base/Debug";
 import Nat "mo:base/Nat";
+import Result "mo:base/Result";
+import Nat64 "mo:base/Nat64";
 import GlobalFunctions "../helpers/globalFunctions";
 import CommonTypes "../types/commonTypes";
 import Vector "mo:vector";
+import LibWrappedBlob "libWrappedBlob";
 
 module libIndex = {
 
@@ -15,24 +18,33 @@ module libIndex = {
         Vector.size(memoryStorage.indizesPerKey_free) > 0;
     };
 
+    // Clear the inner-vector index and mark as free
     public func empty_inner_vector(memoryStorage : MemoryStorage, outerIndex : Nat) {
+
         if (Vector.size(memoryStorage.indizesPerKey) > outerIndex) {
             let innerVector : Vector.Vector<Nat64> = Vector.get(memoryStorage.indizesPerKey, outerIndex);
             Vector.clear<Nat64>(innerVector);
-            Vector.add(memoryStorage.indizesPerKey_free, outerIndex);
+
+            // make sure every index is only one time inserted.
+            // (For example if this method 'empty_inner_vector' is called twice we would else have two times the same value in vector)
+            if (Vector.contains(memoryStorage.indizesPerKey_free, outerIndex, Nat.equal) == false) {
+                Vector.add(memoryStorage.indizesPerKey_free, outerIndex);
+            };
         };
     };
 
-    public func add_outer_vector(memoryStorage : MemoryStorage) : Nat {
+    // Creating and returning new outer-index
+    public func create_and_get_new_outer_vector_index(memoryStorage : MemoryStorage) : Nat {
         if (is_free_vector_available(memoryStorage) == true) {
-            let freeIndexOrNull : ?Nat = Vector.removeLast<Nat>(memoryStorage.indizesPerKey_free);
-            switch (freeIndexOrNull) {
-                case (?freeIndex) {
-                    empty_inner_vector(memoryStorage, freeIndex);
-                    return freeIndex;
+
+            let outerIndexOrNull = Vector.removeLast(memoryStorage.indizesPerKey_free);
+            switch (outerIndexOrNull) {
+                case (?outerIndex) {
+                    let innerVector : Vector.Vector<Nat64> = Vector.get(memoryStorage.indizesPerKey, outerIndex);
+                    Vector.clear<Nat64>(innerVector);
+                    return outerIndex;
                 };
                 case (_) {
-                    // We need to create completely new vector
                     return create_completely_new_vector_internal(memoryStorage);
                 };
             };
@@ -43,12 +55,15 @@ module libIndex = {
         };
     };
 
+    // Adding wrapped-blob address as value into the vector
     public func append_wrapped_blob_memory_address(memoryStorage : MemoryStorage, outerIndex : Nat, wrappedBlobAddress : Nat64) {
         let innerVector : Vector.Vector<Nat64> = Vector.get(memoryStorage.indizesPerKey, outerIndex);
         Vector.add<Nat64>(innerVector, wrappedBlobAddress);
     };
 
-    public func remove_at_range(memoryStorage : MemoryStorage, outerIndex : Nat, startIndex : Nat, lastIndex : Nat) {
+    // The performance is slow. (O(n))
+    // remove many elements from 'startInde' to 'lastIndex'
+    public func remove_at_range(memoryStorage : MemoryStorage, outerIndex : Nat, startIndex : Nat, lastIndex : Nat, deleteAlsoWrappedBlob : Bool) {
 
         let innerVectorOrNull = get_inner_vector(memoryStorage, outerIndex);
         switch (innerVectorOrNull) {
@@ -62,6 +77,21 @@ module libIndex = {
 
                 if (vectorSize > startIndex) {
                     let numbersToRemove : Nat = (lastIndexToUse - startIndex) + 1;
+
+                    if (deleteAlsoWrappedBlob == true) {
+
+                        for (i in Iter.range(startIndex, lastIndex)) {
+                            let wrappedBlobAddressOrNull : ?Nat64 = Vector.getOpt(innerVector, i);
+                            switch (wrappedBlobAddressOrNull) {
+                                case (?wrappedBlobAddress) {
+                                    ignore LibWrappedBlob.delete_wrapped_blob(memoryStorage, wrappedBlobAddress);
+                                };
+                                case (_) {
+
+                                };
+                            };
+                        };
+                    };
 
                     if (vectorSize == 1 and startIndex == 0) {
                         ignore Vector.removeLast(innerVector);
@@ -90,49 +120,13 @@ module libIndex = {
     };
 
     // The performance is slow. (O(n))
-    public func remove_at_index(memoryStorage : MemoryStorage, outerIndex : Nat, innerIndex : Nat) {
+    // Removed the element at index
+    public func remove_at_index(memoryStorage : MemoryStorage, outerIndex : Nat, innerIndex : Nat, deleteAlsoWrappedBlob : Bool) {
 
-        //return remove_many_at_range(outerIndex, innerIndex, innerIndex);
-
-        let innerVectorOrNull = get_inner_vector(memoryStorage, outerIndex);
-        switch (innerVectorOrNull) {
-            case (?innerVector) {
-                let vectorSize = Vector.size(innerVector);
-                if (vectorSize == 0) {
-                    return;
-                };
-
-                if (vectorSize > innerIndex) {
-                    if (vectorSize == 1) {
-                        ignore Vector.removeLast(innerVector);
-                        return;
-                    };
-
-                    for (index in Iter.range(innerIndex +1, vectorSize -1)) {
-                        let vecVal : Nat64 = Vector.get(innerVector, index);
-                        let prevIndex : Nat = index -1;
-                        Vector.put(innerVector, prevIndex, vecVal);
-                    };
-                    ignore Vector.removeLast(innerVector);
-                };
-
-            };
-            case (_) {
-                return;
-            };
-        };
+        return remove_at_range(memoryStorage, outerIndex, innerIndex, innerIndex, deleteAlsoWrappedBlob);
     };
 
-    private func get_last_element(memoryStorage : MemoryStorage, vec : Vector.Vector<Nat64>) : ?Nat64 {
-
-        let size : Nat = Vector.size(vec);
-        if (size == 0) {
-            return null;
-        };
-
-        Vector.getOpt<Nat64>(vec, size -1);
-    };
-
+    // The last Element is removed
     public func remove_last_element(memoryStorage : MemoryStorage, outerIndex : Nat) : ?Nat64 {
         let innerVectorOrNull = get_inner_vector(memoryStorage, outerIndex);
         switch (innerVectorOrNull) {
@@ -146,9 +140,10 @@ module libIndex = {
 
     };
 
-    public func insert_many_at_index(memoryStorage : MemoryStorage, outerIndex : Nat, innerIndex : Nat, wrappedBlobAddresses : [Nat64]) {
-        if (Array.size(wrappedBlobAddresses) == 0) {
-            return;
+    // Add many blobs (inserted into wrapped-blob) into memory
+    public func create_many_addresses_and_insert_at_index(memoryStorage : MemoryStorage, outerIndex : Nat, innerIndex : Nat, blobs : [Blob]) : Result.Result<Text, Text> {
+        if (Array.size(blobs) == 0) {
+            return #err("no blobs to add.");
         };
 
         let innerVectorOrNull = get_inner_vector(memoryStorage, outerIndex);
@@ -158,11 +153,13 @@ module libIndex = {
 
                 if (vectorSize == 0) {
                     if (innerIndex == 0) {
-                        for (address : Nat64 in Iter.fromArray(wrappedBlobAddresses)) {
+                        for (blob : Blob in Iter.fromArray(blobs)) {
+                            let address : Nat64 = LibWrappedBlob.create_new(memoryStorage, blob);
                             Vector.add<Nat64>(innerVector, address);
                         };
+                        return #ok("");
                     };
-                    return;
+                    return #err("Index not found.");
                 };
 
                 if (vectorSize == 1) {
@@ -170,23 +167,25 @@ module libIndex = {
                         let tempValue = Vector.get(innerVector, 0);
                         Vector.clear<Nat64>(innerVector);
 
-                        for (address : Nat64 in Iter.fromArray(wrappedBlobAddresses)) {
+                        for (blob : Blob in Iter.fromArray(blobs)) {
+                            let address : Nat64 = LibWrappedBlob.create_new(memoryStorage, blob);
                             Vector.add<Nat64>(innerVector, address);
                         };
                         Vector.add(innerVector, tempValue);
+                        return #ok("");
                     };
-                    return;
+                    return #err("Index not found.");
                 };
 
                 if (vectorSize > innerIndex) {
 
                     // add dummy elements (will be overwritten later)
-                    for (address : Nat64 in Iter.fromArray(wrappedBlobAddresses)) {
+                    for (blob : Blob in Iter.fromArray(blobs)) {
                         Vector.add<Nat64>(innerVector, 0);
                     };
 
                     // number of items to insert
-                    let countNewItems : Nat = Array.size(wrappedBlobAddresses);
+                    let countNewItems : Nat = Array.size(blobs);
 
                     let vecLength = Vector.size(innerVector);
 
@@ -195,81 +194,34 @@ module libIndex = {
 
                     for (index in Iter.range(innerIndex, vectorSize - 1)) {
                         currIndex := currIndex - 1;
-                        Vector.put(innerVector, currIndex + countNewItems, Vector.get(innerVector, currIndex));
+                        let sourceItem : Nat64 = Vector.get(innerVector, currIndex);
+                        Vector.put(innerVector, currIndex + countNewItems, sourceItem);
                     };
 
                     currIndex := innerIndex;
-                    for (address : Nat64 in Iter.fromArray(wrappedBlobAddresses)) {
+                    for (blob : Blob in Iter.fromArray(blobs)) {
+                        let address : Nat64 = LibWrappedBlob.create_new(memoryStorage, blob);
                         Vector.put<Nat64>(innerVector, currIndex, address);
                         currIndex := currIndex + 1;
                     };
+                    return #ok("");
+                } else {
+                    return #err("Index not found.");
                 };
-
             };
             case (_) {
-                return;
+                return #err("Index not found.");
             };
         };
 
     };
 
     // The performance is slow. (O(n))
-    public func insert_at_index(memoryStorage : MemoryStorage, outerIndex : Nat, innerIndex : Nat, wrappedBlobAddress : Nat64) {
-        return insert_many_at_index(memoryStorage, outerIndex, innerIndex, [wrappedBlobAddress]);
-
-        let innerVectorOrNull = get_inner_vector(memoryStorage, outerIndex);
-        switch (innerVectorOrNull) {
-            case (?innerVector) {
-                let vectorSize = Vector.size(innerVector);
-
-                if (vectorSize == 0) {
-                    if (innerIndex == 0) {
-                        append_wrapped_blob_memory_address(memoryStorage, outerIndex, wrappedBlobAddress);
-                    };
-                    return;
-                };
-
-                if (vectorSize == 1) {
-                    if (innerIndex == 0) {
-                        let tempValue = Vector.get(innerVector, 0);
-                        Vector.put(innerVector, 0, wrappedBlobAddress);
-                        Vector.add(innerVector, tempValue);
-                    };
-                    return;
-                };
-
-                if (vectorSize > innerIndex) {
-
-                    let lastElementOrNull = get_last_element(memoryStorage, innerVector);
-                    switch (lastElementOrNull) {
-                        case (?foundLastElement) {
-                            // add dummy element (will be overwritten later)
-                            Vector.add(innerVector, foundLastElement);
-                        };
-                        case (_) {
-                            append_wrapped_blob_memory_address(memoryStorage, outerIndex, wrappedBlobAddress);
-                            return;
-                        };
-                    };
-
-                    var currIndex : Nat = vectorSize;
-
-                    for (index in Iter.range(innerIndex, vectorSize -1)) {
-                        currIndex := currIndex -1;
-                        let vecVal = Vector.get(innerVector, currIndex);
-                        let nextIndex : Nat = currIndex +1;
-                        Vector.put(innerVector, nextIndex, vecVal);
-                    };
-                    Vector.put(innerVector, innerIndex, wrappedBlobAddress);
-                };
-
-            };
-            case (_) {
-                return;
-            };
-        };
+    public func create_address_and_insert_at_index(memoryStorage : MemoryStorage, outerIndex : Nat, innerIndex : Nat, blob : Blob) : Result.Result<Text, Text> {
+        return create_many_addresses_and_insert_at_index(memoryStorage, outerIndex, innerIndex, [blob]);
     };
 
+    // Returns the address of wrapped-blob for the last inner-index (== last element)
     public func get_address_of_last_stored_wrapped_blob(memoryStorage : MemoryStorage, outerIndex : Nat) : ?Nat64 {
 
         let innerVector_or_null : ?Vector.Vector<Nat64> = get_inner_vector(memoryStorage, outerIndex);
@@ -292,6 +244,7 @@ module libIndex = {
 
     };
 
+    // returns the related wrapped-blob address.
     public func get_wrapped_blob_Address(memoryStorage : MemoryStorage, outerIndex : Nat, innerIndex : Nat) : ?Nat64 {
         let innerVector_or_null : ?Vector.Vector<Nat64> = get_inner_vector(memoryStorage, outerIndex);
         switch (innerVector_or_null) {
@@ -340,6 +293,16 @@ module libIndex = {
     private func create_completely_new_vector_internal(memoryStorage : MemoryStorage) : Nat {
         Vector.add(memoryStorage.indizesPerKey, Vector.new<Nat64>());
         return (Vector.size(memoryStorage.indizesPerKey) - 1);
+    };
+
+    private func get_last_element(memoryStorage : MemoryStorage, vec : Vector.Vector<Nat64>) : ?Nat64 {
+
+        let size : Nat = Vector.size(vec);
+        if (size == 0) {
+            return null;
+        };
+
+        Vector.getOpt<Nat64>(vec, size -1);
     };
 
 };

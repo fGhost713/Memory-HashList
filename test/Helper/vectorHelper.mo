@@ -19,6 +19,8 @@ import Vector "mo:vector";
 
 module {
 
+    // Vector helper class used inside the tests.
+    // This class will hold the reference results for the test "doing many different operations Tests"
     public class vectorHelper() {
 
         public let innerVector : Vector.Vector<Blob> = Vector.new();
@@ -33,11 +35,6 @@ module {
 
         public func remove_at_range(startIndex : Nat, lastIndex : Nat) {
 
-            // for(bla in Iter.range(startIndex, lastIndex)){
-            //     remove_at_index(startIndex);
-            // };
-
-            // return;
             let vectorSize = Vector.size(innerVector);
             if (vectorSize == 0 or lastIndex < startIndex or startIndex >= vectorSize) {
                 return;
@@ -224,8 +221,33 @@ module {
             return get_last_element();
         };
 
-        public func get_value(innerIndex : Nat) : ?Blob {
+        public func get_at_index(innerIndex : Nat) : ?Blob {
             Vector.getOpt(innerVector, innerIndex);
+        };
+
+        public func get_at_range(firstIndex : Nat, lastIndex : Nat) : [?Blob] {
+          
+            let lastIndexOrNull : ?Nat = get_last_index();
+            switch (lastIndexOrNull) {
+                case (?foundLastIndex) {
+                    if (firstIndex > foundLastIndex or firstIndex > lastIndex) {
+                        return [];
+                    };
+                    let lastIndexToUse : Nat = Nat.min(lastIndex, foundLastIndex);
+
+                    let vector : Vector.Vector<?Blob> = Vector.new();
+                    for (index in Iter.range(firstIndex, lastIndexToUse)) {
+                        let blobOrNull = get_at_index(index);
+                        Vector.add<?Blob>(vector, blobOrNull);
+                    };
+                    return Vector.toArray(vector);
+
+                };
+                case (_) {
+                    return [];
+                };
+            };
+
         };
 
         // return last index or null if empty
@@ -239,5 +261,10 @@ module {
             return ?result;
 
         };
+
+        public func size() : Nat {
+            Vector.size(innerVector);
+        };
+
     };
 };

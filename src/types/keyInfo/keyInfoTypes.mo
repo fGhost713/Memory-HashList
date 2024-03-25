@@ -4,13 +4,17 @@ module {
     public type KeyInfo = {
 
         // The totalsize in bytes used for this type
-        totalSize : Nat64;
+        totalSize : Nat32;
+
+        identifier:Nat64;
+
+        version:Nat16;
 
         // The related vector-index
         vectorIndex : Nat64;
 
         // The size of the blob 'keyAsBlob' in bytes
-        sizeOfKeyBlob : Nat64;
+        sizeOfKeyBlob : Nat32;
 
         // The used key as blob
         keyAsBlob : Blob;
@@ -19,11 +23,13 @@ module {
 
     public let Offsets_KeyInfo = {
         totalSize : Nat64 = 0;
-        vectorIndex : Nat64 = 8;
-        sizeOfKeyBlob : Nat64 = 16;
-        keyAsBlob : Nat64 = 24;
+        identifier: Nat64 = 4;
+        version: Nat64 =  12;
+        vectorIndex : Nat64 = 14;
+        sizeOfKeyBlob : Nat64 = 22;
+        keyAsBlob : Nat64 = 26;
 
-        minBytesNeeded : Nat64 = 24;
+        minBytesNeeded : Nat64 = 28; // 4 + 8 + 2 + 8 + 4
     };
 
 };

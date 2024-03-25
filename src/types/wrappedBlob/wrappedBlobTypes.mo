@@ -7,18 +7,18 @@ module {
     //  This type 'WrappedBlob' is never instantiated, and instead all the values are written directly into memory.
     public type WrappedBlob = {
 
-        // Index for next item
-        addressOfNextItem : Nat64;
+        // identifier
+        identifier : Nat64;
 
-        // Index for the previous item
-        addressOfPreviousItem : Nat64;
+        // version
+        version : Nat16;
 
         // Size of the value-blob in bytes
-        internalBlobSize : Nat64;
+        internalBlobSize : Nat32;
 
         // The total allocated size in bytes for the wrapped-blob.
         // (This can be larger than 'internalBlobSize' if replace-buffer in 'memoryStorageTypes' was set > 0)
-        internalBlobAllocatedSize : Nat64;
+        internalBlobAllocatedSize : Nat32;
 
         // The internal blob is stored at this address
         internalBlobAddress : Nat64;
@@ -26,13 +26,13 @@ module {
 
     public let Offsets_WrappedBlob = {
 
-        addressOfNextItem : Nat64 = 0;
-        addressOfPreviousItem : Nat64 = 8;
-        internalBlobSize : Nat64 = 16;
-        internalBlobAllocatedSize : Nat64 = 24;
-        internalBlobAddress : Nat64 = 32;
+        identifier : Nat64 = 0;
+        version : Nat64 = 8;
+        internalBlobSize : Nat64 = 10;
+        internalBlobAllocatedSize : Nat64 = 14;
+        internalBlobAddress : Nat64 = 18;
 
-        bytesNeeded : Nat64 = 40; // 5 * 8 bytes
+        bytesNeeded : Nat64 = 26; //  (8 + 2 + 4 + 4 + 8) == 26
     };
 
 };
