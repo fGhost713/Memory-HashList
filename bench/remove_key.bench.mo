@@ -85,11 +85,7 @@ module {
                     };
                 };
 
-                for (i in Iter.range(1, n)) {
-
-                    ignore hashList.remove_key(key);
-                };
-
+                ignore hashList.remove_key(key);                
             }
         );
 

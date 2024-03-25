@@ -1,6 +1,6 @@
 [package]
 name = "memory-hashlist"
-version = "1.0.0"
+version = "2.0.0"
 description = "Storing and accessing blobs into memory associated with blob-key. (url:https://github.com/fGhost713/Memory-HashList)"
 repository = "https://github.com/fGhost713/Memory-HashList"
 keywords = [ "memory", "data structures", "storing" ]

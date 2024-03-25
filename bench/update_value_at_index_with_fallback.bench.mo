@@ -10,6 +10,7 @@ import List "mo:base/List";
 import Buffer "mo:base/Buffer";
 import LibMemoryHashList "../src/modules/libMemoryHashList";
 import Lib "../src/lib";
+import Vector "mo:vector";
 
 module {
     public func init() : Bench.Bench {
@@ -43,19 +44,53 @@ module {
 
         let mem = Lib.get_new_memory_storage(0);
         let hashList = LibMemoryHashList.libMemoryHashList(mem);
-        let key1 : Blob = Lib.Blobify.Text.to_blob("key1"); 
+
+        let keysVec:Vector.Vector<Blob> = Vector.new();
+        for(i in Iter.range(1,10)){
+            Vector.add<Blob>(keysVec, Lib.Blobify.Text.to_blob("key"#debug_show(i)));
+        };
+        let keys = Vector.toArray(keysVec);
+
 
         let buffer = Buffer.Buffer<Blob>(10002);
-        for (i in Iter.range(1, 10001)) {            
-            ignore hashList.add(key1, ownType1Blob);     
+        for (i in Iter.range(1, 1)) {            
+            ignore hashList.add(keys[0], ownType1Blob);     
+        }; 
+         for (i in Iter.range(1, 11)) {            
+            ignore hashList.add(keys[1], ownType1Blob);     
         };       
+         for (i in Iter.range(1, 101)) {            
+            ignore hashList.add(keys[2], ownType1Blob);     
+        };       
+        
+        for (i in Iter.range(1, 1001)) {            
+            ignore hashList.add(keys[3], ownType1Blob);     
+        };       
+        
+        for (i in Iter.range(1, 10001)) {            
+            ignore hashList.add(keys[4], ownType1Blob);     
+        };                
 
         bench.runner(
             func(row, col) {
-                let ?n = Nat.fromText(col);
+                let n = Option.get(Nat.fromText(col),0);
+                
+
+                var columnIndex = switch(n){
+                    case (1){0;};
+                    case (10){1;};
+                    case (100){2;};
+                    case (1000){3;};
+                    case (10000){4;};                    
+                    case (_){
+                        Debug.trap("Error!");
+                    };
+                };
+                
+                let key = keys[columnIndex];
                 
                 for (i in Iter.range(1, n)) {
-                    ignore hashList.update_at_index(key1, i,ownTypeMuchBiggerBlob); 
+                    ignore hashList.update_at_index(key, i,ownTypeMuchBiggerBlob); 
                 };
                 
             }

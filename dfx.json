@@ -1,10 +1,4 @@
 {
-  "canisters": {
-    "actorTest": {
-      "main": "test/actorTest.mo",
-      "type": "motoko"
-    }
-  },
   
   "defaults": {
     "build": {

@@ -28,3 +28,5 @@ dist/
 
 info.txt
 src\info.txt
+/test/actorTest.mo
+dfx.json
