@@ -19,3 +19,6 @@ bench = "1.0.0"
 
 [toolchain]
 wasmtime = "18.0.1"
+
+[dev-dependencies]
+bench = "1.0.0"

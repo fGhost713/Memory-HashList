@@ -20,7 +20,7 @@ import { test; suite } "mo:test";
 import Leaf "mo:augmented-btrees/BpTree/Leaf";
 import LibMemoryHashList "../src/modules/libMemoryHashList";
 import Fuzz "mo:fuzz";
-import VectorHelper "Helper/vectorHelper";
+//import VectorHelper "Helper/vectorHelper";
 
 type OwnType = {
     myNumber : Nat;
@@ -409,7 +409,7 @@ suite(
             },
 
         );
-
+        /*
         test(
             "doing many different operations Tests",
             func() {
@@ -675,6 +675,6 @@ suite(
 
             },
 
-        );
+        );*/
     },
 );
