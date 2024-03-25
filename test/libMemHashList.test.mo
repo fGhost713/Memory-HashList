@@ -409,7 +409,7 @@ suite(
             },
 
         );
-        /*
+        
         test(
             "doing many different operations Tests",
             func() {
@@ -489,7 +489,7 @@ suite(
 
                 };
 
-                for (index in Iter.range(0, 8000)) {
+                for (index in Iter.range(0, 1000)) {
                     let randomOperation : Nat = fuzz.nat.randomRange(0, 12);
 
                     let randomKeyNumber = fuzz.nat.randomRange(0, 2);
@@ -675,6 +675,6 @@ suite(
 
             },
 
-        );*/
+        );
     },
 );
