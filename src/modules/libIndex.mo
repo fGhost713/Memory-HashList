@@ -1,11 +1,9 @@
 import Iter "mo:base/Iter";
 import Option "mo:base/Option";
 import Array "mo:base/Array";
-import Debug "mo:base/Debug";
 import Nat "mo:base/Nat";
 import Result "mo:base/Result";
 import Nat64 "mo:base/Nat64";
-import GlobalFunctions "../helpers/globalFunctions";
 import CommonTypes "../types/commonTypes";
 import Vector "mo:vector";
 import LibWrappedBlob "libWrappedBlob";
