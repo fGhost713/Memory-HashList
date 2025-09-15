@@ -1,4 +1,4 @@
-import StableTrieMap "mo:StableTrieMap";
+import StableTrieMap "../helpers/stableTrieMap";
 import Nat32 "mo:base/Nat32";
 import Nat64 "mo:base/Nat64";
 import Iter "mo:base/Iter";
