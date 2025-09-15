@@ -1,7 +1,7 @@
 import List "mo:base/List";
 import Nat64 "mo:base/Nat64";
 import Nat32 "mo:base/Nat32";
-import BlobifyModule "mo:memory-buffer/Blobify";
+import BlobifyModule "/helpers/blobify";
 import { MemoryRegion } "mo:memory-region";
 import StableTrieMap "mo:StableTrieMap";
 import MemoryHashListModule "/modules/libMemoryHashList";

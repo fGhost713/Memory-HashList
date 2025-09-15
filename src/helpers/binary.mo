@@ -4,7 +4,7 @@ import Nat8 "mo:base/Nat8";
 import Nat16 "mo:base/Nat16";
 import Nat32 "mo:base/Nat32";
 import Nat64 "mo:base/Nat64";
-import Result "mo:base/Result";
+
 
 module {
     public type ByteOrder = {
@@ -16,10 +16,10 @@ module {
 	    toNat64 : ([Nat8]) -> Nat64;
     };
 
-    private func nat16to8 (n : Nat16) : Nat8 = Nat8.fromIntWrap(Nat16.toNat(n)); 
+    private func nat16to8 (n : Nat16) : Nat8 = Nat8.fromIntWrap(Nat16.toNat(n));
     private func nat8to16 (n : Nat8) : Nat16 = Nat16.fromIntWrap(Nat8.toNat(n));
 
-    private func nat32to8 (n : Nat32) : Nat8 = Nat8.fromIntWrap(Nat32.toNat(n)); 
+    private func nat32to8 (n : Nat32) : Nat8 = Nat8.fromIntWrap(Nat32.toNat(n));
     private func nat8to32 (n : Nat8) : Nat32 = Nat32.fromIntWrap(Nat8.toNat(n));
 
     private func nat64to8 (n : Nat64) : Nat8 = Nat8.fromIntWrap(Nat64.toNat(n));

@@ -1,6 +1,5 @@
 import Blob "mo:base/Blob";
 import Nat64 "mo:base/Nat64";
-import Debug "mo:base/Debug";
 import Option "mo:base/Option";
 import CommonTypes "../types/commonTypes";
 import { MemoryRegion } "mo:memory-region";
@@ -39,10 +38,10 @@ module {
 
             };
             case (_){
-                
+
             };
         };
-        
+
     };
 
     // Allocate memory and updates the memory-bound variables
@@ -56,13 +55,13 @@ module {
             case (?memUsedFirstAddress){
                 if (memUsedFirstAddress > allocatedAddressNat64) {
                     mem.memory_used_firstAddress := Option.make(allocatedAddressNat64);
-                }  
+                }
             };
             case (_){
                 mem.memory_used_firstAddress := Option.make(allocatedAddressNat64);
             };
          };
-       
+
 
         if (mem.memory_used_lastAddress < end) {
             mem.memory_used_lastAddress := end;
