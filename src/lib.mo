@@ -3,7 +3,7 @@ import Nat64 "mo:base/Nat64";
 import Nat32 "mo:base/Nat32";
 import BlobifyModule "/helpers/blobify";
 import { MemoryRegion } "mo:memory-region";
-import StableTrieMap "mo:StableTrieMap";
+import StableTrieMap "/helpers/stableTrieMap";
 import MemoryHashListModule "/modules/libMemoryHashList";
 import MemoryStorageTypes "types/memoryStorage/memoryStorageTypes";
 import StableMemoryHashListModule "/modules/libStableMemoryHashList";

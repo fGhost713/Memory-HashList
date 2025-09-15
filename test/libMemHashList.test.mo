@@ -5,19 +5,10 @@ import Text "mo:base/Text";
 import Option "mo:base/Option";
 import Debug "mo:base/Debug";
 import Iter "mo:base/Iter";
-import Nat64 "mo:base/Nat64";
-import List "mo:base/List";
-import Array "mo:base/Array";
-import Nat32 "mo:base/Nat32";
-import Random "mo:base/Random";
 import Nat "mo:base/Nat";
-import Nat8 "mo:base/Nat8";
-import LibKey "../src/modules/libKey";
-import GlobalFunctions "../src/helpers/globalFunctions";
-import StableTrieMap "mo:StableTrieMap";
+import Array "mo:base/Array";
 import Vector "mo:vector";
 import { test; suite } "mo:test";
-import Leaf "mo:augmented-btrees/BpTree/Leaf";
 import LibMemoryHashList "../src/modules/libMemoryHashList";
 import Fuzz "mo:fuzz";
 import VectorHelper "Helper/vectorHelper";
@@ -409,7 +400,7 @@ suite(
             },
 
         );
-        
+
         test(
             "doing many different operations Tests",
             func() {
@@ -632,7 +623,7 @@ suite(
 
                             let allKeys:[Blob] =  hashList.get_all_keys();
 
-                            assert Array.size(allKeys) == keysCount;                                                        
+                            assert Array.size(allKeys) == keysCount;
 
                         };
                         case (11){
@@ -642,20 +633,20 @@ suite(
                             let randomEndIndex = fuzz.nat.randomRange(0, 14);
                             let refResults:[?Blob] = refVector.get_at_range(randomIndex, randomEndIndex);
                             let actualResults:[?Blob] = hashList.get_at_range(randomKey, randomIndex, randomEndIndex);
-                            
+
                             assert refResults == actualResults;
-                            
+
                             assert isEqual(hashList, refVector, randomKey) == true;
 
                         };
                         case (12){
                             // get last index
-                            
+
                             let refResults:?Nat = refVector.get_last_index();
                             let actualResults:?Nat = hashList.get_last_index(randomKey);
 
                             assert refResults == actualResults;
-                            
+
                             assert isEqual(hashList, refVector, randomKey) == true;
 
                         };

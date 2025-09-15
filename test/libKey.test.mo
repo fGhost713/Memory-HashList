@@ -1,24 +1,15 @@
 // @testmode wasi
 import lib "../src/lib";
 import Blob "mo:base/Blob";
-import Text "mo:base/Text";
-import Option "mo:base/Option";
-import Debug "mo:base/Debug";
 import Iter "mo:base/Iter";
 import Nat64 "mo:base/Nat64";
 import List "mo:base/List";
-import Array "mo:base/Array";
 import Nat32 "mo:base/Nat32";
 import LibKey "../src/modules/libKey";
 import GlobalFunctions "../src/helpers/globalFunctions";
-import StableTrieMap "mo:StableTrieMap";
-import Vector "mo:vector";
-
 import { test; suite } "mo:test";
 
 let globalBlobHashFunction = GlobalFunctions.blobHash;
-let dummyBlob : Blob = lib.Blobify.Text.to_blob("dummyBlob");
-let dummyNat32 : Nat32 = 732354;
 
 suite(
     "LibKey Tests",
@@ -80,7 +71,7 @@ suite(
             },
 
         );
-       
+
         test(
             "Test 'remove_value' function",
             func() {

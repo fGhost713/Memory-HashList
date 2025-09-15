@@ -1,5 +1,5 @@
 import Blob "mo:base/Blob";
-import StableTrieMap "mo:StableTrieMap";
+import StableTrieMap "../../src/helpers/stableTrieMap";
 import Nat32 "mo:base/Nat32";
 import Nat64 "mo:base/Nat64";
 import Region "mo:base/Region";
@@ -226,7 +226,7 @@ module {
         };
 
         public func get_at_range(firstIndex : Nat, lastIndex : Nat) : [?Blob] {
-          
+
             let lastIndexOrNull : ?Nat = get_last_index();
             switch (lastIndexOrNull) {
                 case (?foundLastIndex) {
